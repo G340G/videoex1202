@@ -2,496 +2,277 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEPHIROTH_SYS_ADMIN // TREE_OF_LIFE_CORRUPTED</title>
+    <title>SEPHIROTH_V5 // GENERATIVE_VOID</title>
     <style>
-        /* --- CORE AESTHETICS --- */
-        :root {
-            --ppt-bg: #e0d8c0;
-            --ppt-text: #000080;
-            --vhs-bg: #050505;
-            --vhs-text: #0f0;
-            --alert-red: #ff0000;
-        }
-
-        body {
-            margin: 0;
-            background: #000;
-            overflow: hidden;
-            font-family: 'Times New Roman', serif; /* Corporate 90s feel */
-            cursor: none;
-            user-select: none;
-        }
-
-        #viewport {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        /* --- LAYERS --- */
-        #ppt-layer, #horror-layer, #glitch-layer, #overlay-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* --- PPT STYLES (The "Safe" Mode) --- */
-        #ppt-layer {
-            background: var(--ppt-bg);
-            color: var(--ppt-text);
-            padding: 5vw;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            opacity: 1;
-            transition: opacity 0.5s;
-            z-index: 10;
-        }
-
-        .slide-header {
-            font-size: 4vw;
-            border-bottom: 5px solid #000080;
-            margin-bottom: 2vw;
-            text-transform: uppercase;
-        }
-
-        .slide-bullet {
-            font-size: 2.5vw;
-            font-family: 'Arial', sans-serif;
-            margin-bottom: 1.5vw;
-            list-style-type: square;
-        }
-
-        /* --- HORROR STYLES (The "Fiend" Mode) --- */
-        #horror-layer {
-            background: var(--vhs-bg);
-            z-index: 20;
-            opacity: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            mix-blend-mode: hard-light;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            filter: contrast(1.5) brightness(0.8) sepia(1);
-        }
-
-        /* --- VHS ARTIFACTS --- */
-        #overlay-layer {
-            pointer-events: none;
-            z-index: 100;
-            background: 
-                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-                linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));
-            background-size: 100% 2px, 3px 100%;
-            animation: scanline 10s linear infinite;
-        }
-
-        .rec-tag {
-            position: absolute;
-            top: 50px;
-            right: 50px;
-            color: red;
-            font-family: monospace;
-            font-size: 30px;
-            animation: blink 1s steps(1) infinite;
-            display: none;
-            text-shadow: 0 0 10px red;
-        }
-
-        .scraped-text {
-            position: absolute;
-            bottom: 50px;
-            left: 50px;
-            font-family: 'Courier New', monospace;
-            color: white;
-            background: black;
-            padding: 10px;
-            font-size: 20px;
-            display: none;
-        }
-
-        #start-btn {
-            position: absolute;
-            z-index: 999;
-            background: black;
-            color: white;
-            border: 2px solid white;
-            padding: 20px;
-            font-family: monospace;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-        }
-
-        /* --- ANIMATIONS --- */
-        @keyframes blink { 50% { opacity: 0; } }
-        @keyframes scanline { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "Courier New", monospace; }
+        #master-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
         
-        .anxiety-zoom { animation: panicZoom 10s ease-in forwards; }
-        @keyframes panicZoom { 0% { transform: scale(1); } 100% { transform: scale(1.5) rotate(2deg); } }
+        /* UI Elements */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        #start-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #050505; z-index: 100; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; color: #f00; cursor: crosshair; 
+        }
+        #rec-indicator { 
+            position: absolute; top: 30px; left: 30px; color: red; font-weight: bold; 
+            display: none; text-shadow: 0 0 10px red; font-size: 20px; 
+        }
+        
+        /* VHS Overlay Effect */
+        .vhs-lines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 5; background-size: 100% 3px, 3px 100%; pointer-events: none;
+        }
 
+        .terminal-text {
+            position: absolute; bottom: 40px; left: 40px; color: #fff; background: #000;
+            padding: 5px 15px; font-size: 18px; max-width: 60%; display: none;
+        }
+
+        button { 
+            background: transparent; border: 1px solid #f00; color: #f00; 
+            padding: 20px 40px; font-family: inherit; font-size: 20px; 
+            letter-spacing: 5px; cursor: pointer; transition: 0.3s;
+        }
+        button:hover { background: #f00; color: #000; box-shadow: 0 0 20px #f00; }
     </style>
 </head>
 <body>
 
-    <div id="viewport">
-        <button id="start-btn">INITIALIZE ARCHIVE_88.BAT</button>
+    <div id="start-screen">
+        <h1 style="margin-bottom: 40px; letter-spacing: 15px;">PROJ_SEPHIROTH</h1>
+        <button id="init-btn">GENERATE & RECORD SEQUENCE</button>
+        <p style="margin-top: 20px; font-size: 12px; opacity: 0.5;">[30 SECOND CAPTURE // AUTO-DOWNLOAD]</p>
+    </div>
 
-        <div id="ppt-layer">
-            <div class="slide-header" id="ppt-title">Quarterly Review</div>
-            <ul id="ppt-content">
-                <li class="slide-bullet">Maximize synergy</li>
-                <li class="slide-bullet">Reduce overhead</li>
-            </ul>
-            <img id="ppt-img" src="" style="width: 300px; height: auto; opacity: 0.8; mix-blend-mode: multiply;">
-        </div>
-
-        <div id="horror-layer">
-            <canvas id="fiend-canvas"></canvas>
-        </div>
-
-        <div id="overlay-layer">
-            <div class="rec-tag">● REC [Tape_1994]</div>
-            <div class="scraped-text" id="caption-text">WAITING FOR SIGNAL...</div>
+    <div id="master-container">
+        <canvas id="mainCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="rec-indicator">● REC</div>
+            <div id="caption" class="terminal-text"></div>
+            <div class="vhs-lines"></div>
         </div>
     </div>
 
 <script>
-    /**
-     * THE ARG ENGINE: "PROJECT SEPHIROTH"
-     * Generates procedural horror sequences.
-     */
+/**
+ * PROJECT SEPHIROTH V5: GENERATIVE HORROR ENGINE
+ * Features: Procedural Mayan Mask, Theme Scraping, WebAudio FM Synthesis, MediaRecorder.
+ */
 
-    // --- CONFIGURATION ---
-    const CONFIG = {
-        pptTopics: [
-            { title: "Lawn Care Tips", points: ["Fertilizer ratios", "Weed control", "Digging depth (6ft)", "Soil acidity"] },
-            { title: "Dental Hygiene", points: ["Flossing daily", "Gum health", "Teeth extraction", "Root canal visibility"] },
-            { title: "Office Safety", points: ["Walk, don't run", "Label your food", "Ignore the vents", "Report disappearances"] },
-            { title: "Sunday School", points: ["Noah's Ark", "The Apple", "The Tree of Life", "Sacrificial Lambs"] }
-        ],
-        horrorThemes: ["decay", "fog", "meat", "teeth", "abandoned", "forest", "static"],
-        scrapedPhrases: [
-            "THEY ARE UNDER THE FLOOR", "IT HURTS TO BREATHE", "MISSING SINCE 1989", 
-            "DECIPHER THE TREE", "SEPHIROTH IS BLEEDING", "NO SIGNAL", "LOOK BEHIND YOU",
-            "THE CAMERA IS WATCHING", "DON'T TURN IT OFF", "DATA_CORRUPT_SECTOR_7"
-        ],
-        fiendColors: ["#220000", "#111111", "#050505", "#330000"]
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+const startScreen = document.getElementById('start-screen');
+const caption = document.getElementById('caption');
+const recLabel = document.getElementById('rec-indicator');
+
+canvas.width = 1280;
+canvas.height = 720;
+
+// --- THEME ENGINE ---
+const THEMES = [
+    { 
+        name: "THE_ROOT", 
+        keywords: "roots,dirt,underground,veins", 
+        color: "#221100", 
+        msg: ["THE TREE IS THIRSTY", "DIGGING IN SECTOR 7", "REPLACE THE SOIL", "ROOT_PENETRATION_SUCCESS"] 
+    },
+    { 
+        name: "THE_SKY", 
+        keywords: "astronomy,void,telescope,clouds", 
+        color: "#000022", 
+        msg: ["THE STARS ARE TEETH", "DO NOT LOOK UP", "THE SUN IS LOUD", "VACUUM_BREATHING_STATED"] 
+    },
+    { 
+        name: "THE_FLESH", 
+        keywords: "anatomy,meat,medical,texture", 
+        color: "#330000", 
+        msg: ["UPGRADE YOUR SKIN", "THE VEINS ARE WIRES", "BONE_DENSITY_LOW", "BLOOD_SIGNAL_CLEAN"] 
+    }
+];
+
+let sessionTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+let audioCtx, masterGain, recorder, chunks = [];
+let frame = 0;
+let isHorror = false;
+let scrapedImg = new Image();
+
+// --- AUDIO SYNTHESIS ---
+function initAudio() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.connect(audioCtx.destination);
+}
+
+function playTone(freq, dur, type='sine', vol=0.1) {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    osc.connect(g).connect(masterGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+}
+
+// --- DRAWING THE FIEND (Mayan Mask) ---
+function drawFiend() {
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    
+    // Face shape
+    ctx.fillStyle = "#111";
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 4;
+    
+    ctx.beginPath();
+    ctx.moveTo(-150, -200);
+    ctx.lineTo(150, -200);
+    ctx.lineTo(180, 100);
+    ctx.lineTo(0, 250);
+    ctx.lineTo(-180, 100);
+    ctx.close();
+    ctx.fill();
+    ctx.stroke();
+
+    // Geometric details
+    ctx.beginPath();
+    ctx.moveTo(-150, -100); ctx.lineTo(150, -100);
+    ctx.moveTo(-100, 0); ctx.lineTo(100, 0);
+    ctx.stroke();
+
+    // The Eyes
+    const flicker = Math.random() > 0.9 ? 1 : 0.4;
+    ctx.fillStyle = `rgba(255, 255, 255, ${flicker})`;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "white";
+    ctx.fillRect(-80, -150, 40, 15);
+    ctx.fillRect(40, -150, 40, 15);
+    
+    // Mouth
+    ctx.fillStyle = "#000";
+    ctx.fillRect(-60, 50, 120, 60);
+    ctx.strokeStyle = "#555";
+    for(let i=-60; i<=60; i+=20) {
+        ctx.strokeRect(i, 50, 1, 60);
+    }
+    
+    ctx.restore();
+}
+
+// --- MAIN LOOP ---
+function render() {
+    frame++;
+    
+    // 30 second limit (60fps * 30 = 1800)
+    if (frame > 1800) {
+        stopSequence();
+        return;
+    }
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+
+    // Toggle between PPT and Horror randomly
+    if (frame % 300 === 0) {
+        isHorror = Math.random() > 0.5;
+        if (isHorror) {
+            caption.style.display = 'block';
+            caption.innerText = sessionTheme.msg[Math.floor(Math.random() * sessionTheme.msg.length)];
+            playTone(60, 2, 'sawtooth', 0.2);
+            speak(caption.innerText);
+        } else {
+            caption.style.display = 'none';
+        }
+    }
+
+    if (!isHorror) {
+        // PPT MODE
+        ctx.fillStyle = "#e0e0e0";
+        ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
+        ctx.fillStyle = "#000080";
+        ctx.font = "bold 60px 'Arial'";
+        ctx.fillText(`TOPIC: ${sessionTheme.name}`, 100, 150);
+        ctx.font = "30px 'Arial'";
+        ctx.fillText("- Observations on Growth", 100, 220);
+        ctx.fillText("- Quarterly Disappearance Metrics", 100, 270);
+        
+        // Illogical Zooming Image
+        if (scrapedImg.complete) {
+            ctx.drawImage(scrapedImg, 700, 200, 400 + Math.sin(frame*0.05)*50, 300);
+        }
+    } else {
+        // HORROR MODE
+        if (Math.random() > 0.95) { // Jumpscare Flash
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0,0, canvas.width, canvas.height);
+            playTone(Math.random()*1000 + 100, 0.1, 'square', 0.5);
+        }
+        drawFiend();
+        
+        // Glitch lines
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 1;
+        for(let i=0; i<5; i++) {
+            let y = Math.random() * canvas.height;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+    }
+
+    requestAnimationFrame(render);
+}
+
+// --- UTILS ---
+function speak(text) {
+    const synth = window.speechSynthesis;
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.pitch = 0.1;
+    utter.rate = 0.7;
+    synth.speak(utter);
+}
+
+function startRecording() {
+    const stream = canvas.captureStream(30);
+    recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `VOID_SIGNAL_${sessionTheme.name}.webm`;
+        a.click();
     };
+    recorder.start();
+    recLabel.style.display = 'block';
+}
 
-    // --- STATE MANAGEMENT ---
-    let state = {
-        active: false,
-        mode: 'PPT', // 'PPT', 'STATIC', 'FIEND', 'CALM'
-        audioCtx: null,
-        frame: 0,
-        glitchIntensity: 0
-    };
+function stopSequence() {
+    recorder.stop();
+    recLabel.style.display = 'none';
+    alert("TRANSMISSION COMPLETE. VIDEO DOWNLOADED.");
+}
 
-    const els = {
-        ppt: document.getElementById('ppt-layer'),
-        horror: document.getElementById('horror-layer'),
-        canvas: document.getElementById('fiend-canvas'),
-        ctx: document.getElementById('fiend-canvas').getContext('2d'),
-        title: document.getElementById('ppt-title'),
-        list: document.getElementById('ppt-content'),
-        rec: document.querySelector('.rec-tag'),
-        caption: document.getElementById('caption-text'),
-        img: document.getElementById('ppt-img')
-    };
+// --- INITIALIZE ---
+document.getElementById('init-btn').addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    initAudio();
+    scrapedImg.src = `https://picsum.photos/800/600?grayscale&t=${Date.now()}`;
+    
+    // Background drone
+    setInterval(() => {
+        if(!isHorror) playTone(110, 4, 'sine', 0.05);
+        else playTone(55, 1, 'sawtooth', 0.1);
+    }, 2000);
 
-    // --- AUDIO ENGINE (Web Audio API) ---
-    class AudioEngine {
-        constructor() {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            this.masterGain = this.ctx.createGain();
-            this.masterGain.connect(this.ctx.destination);
-            this.oscillators = [];
-        }
-
-        playDrone(type) {
-            // Calm, Corporate Drone
-            if (type === 'calm') {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(100 + Math.random() * 50, this.ctx.currentTime);
-                // Binaural beat effect
-                osc.frequency.linearRampToValueAtTime(102, this.ctx.currentTime + 10);
-                
-                gain.gain.setValueAtTime(0, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + 2);
-                
-                osc.connect(gain);
-                gain.connect(this.masterGain);
-                osc.start();
-                this.oscillators.push({osc, gain});
-            }
-        }
-
-        playScarySound(intensity) {
-            // Generative Industrial Noise
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            const filter = this.ctx.createBiquadFilter();
-            
-            osc.type = Math.random() > 0.5 ? 'sawtooth' : 'square';
-            
-            // Random dissonant frequencies
-            let freq = Math.random() * 100 + 40; 
-            if (intensity === 'high') freq = Math.random() * 1000 + 200; // Screech
-
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            // Pitch bend drop (doppler effect)
-            osc.frequency.exponentialRampToValueAtTime(freq / 2, this.ctx.currentTime + 0.5);
-
-            filter.type = "lowpass";
-            filter.frequency.value = 500 + (Math.random() * 2000);
-
-            gain.gain.setValueAtTime(0, this.ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 0.05); // Attack
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1); // Decay
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(this.masterGain);
-            
-            osc.start();
-            osc.stop(this.ctx.currentTime + 1.5);
-        }
-
-        cutSound() {
-            // Abrupt Silence
-            this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, this.ctx.currentTime);
-            this.masterGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.01);
-            setTimeout(() => {
-                this.masterGain.gain.setValueAtTime(1, this.ctx.currentTime + 0.1);
-                this.oscillators.forEach(o => o.osc.stop());
-                this.oscillators = [];
-            }, 100);
-        }
-        
-        speak(text) {
-            if ('speechSynthesis' in window) {
-                const u = new SpeechSynthesisUtterance(text);
-                u.pitch = 0.5; // Demonic low pitch
-                u.rate = 0.8;  // Slow
-                window.speechSynthesis.speak(u);
-            }
-        }
-    }
-
-    // --- VISUAL ENGINE ---
-    class VisualEngine {
-        constructor() {
-            els.canvas.width = window.innerWidth;
-            els.canvas.height = window.innerHeight;
-            this.image = new Image();
-            this.fiendPoly = [];
-            this.generateFiendGeometry();
-        }
-
-        // Generate a jagged "Mask" polygon
-        generateFiendGeometry() {
-            this.fiendPoly = [];
-            const cx = els.canvas.width / 2;
-            const cy = els.canvas.height / 2;
-            const radius = 200;
-            
-            for (let i = 0; i < 20; i++) {
-                const angle = (i / 20) * Math.PI * 2;
-                const r = radius + (Math.random() - 0.5) * 100; // Jagged edges
-                this.fiendPoly.push({
-                    x: cx + Math.cos(angle) * r,
-                    y: cy + Math.sin(angle) * r
-                });
-            }
-        }
-
-        async scrapeImage() {
-            // Simulating scraping by grabbing vague creative commons placeholders
-            const keywords = CONFIG.horrorThemes[Math.floor(Math.random() * CONFIG.horrorThemes.length)];
-            // Using a timestamp to bypass cache
-            const url = `https://source.unsplash.com/1600x900/?${keywords}&sig=${Date.now()}`;
-            // Note: Since source.unsplash is deprecated/redirects, we use a reliable placeholder logic for reliability in code demo
-            // In a real deployed ARG, you'd host your own asset folder. 
-            // Fallback for demo:
-            this.image.src = `https://picsum.photos/1280/720?grayscale&blur=2&random=${Date.now()}`;
-        }
-
-        drawFiend(isGlitching) {
-            const ctx = els.ctx;
-            const w = els.canvas.width;
-            const h = els.canvas.height;
-
-            // Clear with static noise
-            if (Math.random() > 0.8) {
-                ctx.fillStyle = `rgba(${Math.random()*50}, 0, 0, 0.1)`;
-                ctx.fillRect(0,0,w,h);
-            }
-
-            // Draw the Mask
-            ctx.beginPath();
-            if (this.fiendPoly.length > 0) {
-                ctx.moveTo(this.fiendPoly[0].x + (Math.random()*10), this.fiendPoly[0].y);
-                for (let p of this.fiendPoly) {
-                    ctx.lineTo(p.x + (isGlitching ? (Math.random()-0.5)*50 : 0), p.y);
-                }
-            }
-            ctx.closePath();
-            ctx.fillStyle = '#000';
-            ctx.fill();
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 5;
-            ctx.stroke();
-
-            // Eyes (Glowing)
-            ctx.fillStyle = Math.random() > 0.9 ? '#fff' : '#a00';
-            const eyeOffset = Math.sin(state.frame * 0.1) * 10;
-            ctx.fillRect((w/2) - 50 + eyeOffset, (h/2) - 20, 10, 10); // Left
-            ctx.fillRect((w/2) + 50 + eyeOffset, (h/2) - 20, 10, 10); // Right
-
-            // Tree of Life / Circuitry Overlay
-            if (state.frame % 10 === 0) {
-                ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
-                ctx.beginPath();
-                ctx.moveTo(w/2, h);
-                ctx.lineTo(w/2, h/2);
-                ctx.lineTo(w/2 - 100, h/2 - 100);
-                ctx.lineTo(w/2 + 100, h/2 - 100);
-                ctx.stroke();
-            }
-        }
-
-        drawScrapedImage() {
-            const ctx = els.ctx;
-            if (this.image.complete) {
-                // "Illogical Zoom" - Draw a small part of the image to the whole screen
-                const zoomX = Math.random() * (this.image.width - 200);
-                const zoomY = Math.random() * (this.image.height - 200);
-                
-                ctx.globalCompositeOperation = 'luminosity';
-                ctx.drawImage(this.image, zoomX, zoomY, 200, 200, 0, 0, els.canvas.width, els.canvas.height);
-                ctx.globalCompositeOperation = 'source-over';
-            }
-        }
-    }
-
-    // --- DIRECTOR (Logic) ---
-    const audio = new AudioEngine();
-    const visual = new VisualEngine();
-
-    function setMode(newMode) {
-        state.mode = newMode;
-        console.log(`SYSTEM_LOG: SWITCHING_TO_${newMode}`);
-        
-        if (newMode === 'PPT') {
-            els.ppt.style.opacity = 1;
-            els.horror.style.opacity = 0;
-            els.rec.style.display = 'none';
-            els.caption.style.display = 'none';
-            
-            // Generate boring content
-            const topic = CONFIG.pptTopics[Math.floor(Math.random() * CONFIG.pptTopics.length)];
-            els.title.innerText = topic.title;
-            els.list.innerHTML = topic.points.map(p => `<li class="slide-bullet">${p}</li>`).join('');
-            
-            audio.playDrone('calm');
-        } 
-        else if (newMode === 'FIEND') {
-            els.ppt.style.opacity = 0;
-            els.horror.style.opacity = 1;
-            els.rec.style.display = 'block';
-            els.caption.style.display = 'block';
-            els.caption.innerText = CONFIG.scrapedPhrases[Math.floor(Math.random()*CONFIG.scrapedPhrases.length)];
-            
-            // Encrypted Easter Egg in Console
-            const secret = "HELP ME";
-            const encoded = btoa(secret); // Base64
-            console.warn(`%c 0x8849: ${encoded}`, "color: red; background: black; font-size: 15px");
-            
-            audio.cutSound(); // Silence first
-            setTimeout(() => audio.playScarySound('low'), 500);
-            
-            visual.scrapeImage();
-            visual.generateFiendGeometry(); // New face
-        }
-    }
-
-    function gameLoop() {
-        if (!state.active) return;
-        state.frame++;
-
-        // Random Event Trigger
-        const chance = Math.random();
-
-        if (state.mode === 'PPT') {
-            // 1% chance to glitch per frame
-            if (chance > 0.995) {
-                els.ppt.style.transform = `skewX(${Math.random()*20}deg)`;
-                audio.playScarySound('low');
-                setTimeout(() => els.ppt.style.transform = 'none', 100);
-            }
-            
-            // Switch to horror
-            if (state.frame % 400 === 0 && chance > 0.5) {
-                setMode('FIEND');
-            }
-        }
-
-        else if (state.mode === 'FIEND') {
-            visual.drawFiend(Math.random() > 0.8);
-            
-            // Jumpscare Moment
-            if (chance > 0.99) {
-                visual.drawScrapedImage(); // Flash image
-                els.canvas.style.filter = "invert(1)";
-                audio.playScarySound('high');
-                setTimeout(() => els.canvas.style.filter = "contrast(1.5) brightness(0.8) sepia(1)", 100);
-            }
-
-            // Return to Normal
-            if (chance > 0.995 && state.frame % 100 === 0) {
-                setMode('PPT');
-            }
-        }
-
-        requestAnimationFrame(gameLoop);
-    }
-
-    // --- INITIALIZATION ---
-    document.getElementById('start-btn').addEventListener('click', function() {
-        this.style.display = 'none';
-        state.active = true;
-        
-        // Fullscreen for immersion
-        document.documentElement.requestFullscreen().catch(e => console.log(e));
-        
-        // Start Loop
-        setMode('PPT');
-        gameLoop();
-        
-        // EASTER EGG: Keyboard listener
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 't') { // Tree of Life trigger
-                audio.speak("The roots are drinking blood.");
-                els.caption.innerText = "SEPHIROTH_ACTIVE";
-                visual.generateFiendGeometry();
-            }
-        });
-    });
+    startRecording();
+    render();
+});
 
 </script>
 </body>
