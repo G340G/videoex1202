@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEPHIROTH_SYS_ADMIN // TREE_OF_LIFE_CORRUPTED</title>
+    <style>
+        /* --- CORE AESTHETICS --- */
+        :root {
+            --ppt-bg: #e0d8c0;
+            --ppt-text: #000080;
+            --vhs-bg: #050505;
+            --vhs-text: #0f0;
+            --alert-red: #ff0000;
+        }
+
+        body {
+            margin: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: 'Times New Roman', serif; /* Corporate 90s feel */
+            cursor: none;
+            user-select: none;
+        }
+
+        #viewport {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* --- LAYERS --- */
+        #ppt-layer, #horror-layer, #glitch-layer, #overlay-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- PPT STYLES (The "Safe" Mode) --- */
+        #ppt-layer {
+            background: var(--ppt-bg);
+            color: var(--ppt-text);
+            padding: 5vw;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            opacity: 1;
+            transition: opacity 0.5s;
+            z-index: 10;
+        }
+
+        .slide-header {
+            font-size: 4vw;
+            border-bottom: 5px solid #000080;
+            margin-bottom: 2vw;
+            text-transform: uppercase;
+        }
+
+        .slide-bullet {
+            font-size: 2.5vw;
+            font-family: 'Arial', sans-serif;
+            margin-bottom: 1.5vw;
+            list-style-type: square;
+        }
+
+        /* --- HORROR STYLES (The "Fiend" Mode) --- */
+        #horror-layer {
+            background: var(--vhs-bg);
+            z-index: 20;
+            opacity: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            mix-blend-mode: hard-light;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: contrast(1.5) brightness(0.8) sepia(1);
+        }
+
+        /* --- VHS ARTIFACTS --- */
+        #overlay-layer {
+            pointer-events: none;
+            z-index: 100;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));
+            background-size: 100% 2px, 3px 100%;
+            animation: scanline 10s linear infinite;
+        }
+
+        .rec-tag {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            color: red;
+            font-family: monospace;
+            font-size: 30px;
+            animation: blink 1s steps(1) infinite;
+            display: none;
+            text-shadow: 0 0 10px red;
+        }
+
+        .scraped-text {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            font-family: 'Courier New', monospace;
+            color: white;
+            background: black;
+            padding: 10px;
+            font-size: 20px;
+            display: none;
+        }
+
+        #start-btn {
+            position: absolute;
+            z-index: 999;
+            background: black;
+            color: white;
+            border: 2px solid white;
+            padding: 20px;
+            font-family: monospace;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes blink { 50% { opacity: 0; } }
+        @keyframes scanline { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
+        
+        .anxiety-zoom { animation: panicZoom 10s ease-in forwards; }
+        @keyframes panicZoom { 0% { transform: scale(1); } 100% { transform: scale(1.5) rotate(2deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div id="viewport">
+        <button id="start-btn">INITIALIZE ARCHIVE_88.BAT</button>
+
+        <div id="ppt-layer">
+            <div class="slide-header" id="ppt-title">Quarterly Review</div>
+            <ul id="ppt-content">
+                <li class="slide-bullet">Maximize synergy</li>
+                <li class="slide-bullet">Reduce overhead</li>
+            </ul>
+            <img id="ppt-img" src="" style="width: 300px; height: auto; opacity: 0.8; mix-blend-mode: multiply;">
+        </div>
+
+        <div id="horror-layer">
+            <canvas id="fiend-canvas"></canvas>
+        </div>
+
+        <div id="overlay-layer">
+            <div class="rec-tag">● REC [Tape_1994]</div>
+            <div class="scraped-text" id="caption-text">WAITING FOR SIGNAL...</div>
+        </div>
+    </div>
+
+<script>
+    /**
+     * THE ARG ENGINE: "PROJECT SEPHIROTH"
+     * Generates procedural horror sequences.
+     */
+
+    // --- CONFIGURATION ---
+    const CONFIG = {
+        pptTopics: [
+            { title: "Lawn Care Tips", points: ["Fertilizer ratios", "Weed control", "Digging depth (6ft)", "Soil acidity"] },
+            { title: "Dental Hygiene", points: ["Flossing daily", "Gum health", "Teeth extraction", "Root canal visibility"] },
+            { title: "Office Safety", points: ["Walk, don't run", "Label your food", "Ignore the vents", "Report disappearances"] },
+            { title: "Sunday School", points: ["Noah's Ark", "The Apple", "The Tree of Life", "Sacrificial Lambs"] }
+        ],
+        horrorThemes: ["decay", "fog", "meat", "teeth", "abandoned", "forest", "static"],
+        scrapedPhrases: [
+            "THEY ARE UNDER THE FLOOR", "IT HURTS TO BREATHE", "MISSING SINCE 1989", 
+            "DECIPHER THE TREE", "SEPHIROTH IS BLEEDING", "NO SIGNAL", "LOOK BEHIND YOU",
+            "THE CAMERA IS WATCHING", "DON'T TURN IT OFF", "DATA_CORRUPT_SECTOR_7"
+        ],
+        fiendColors: ["#220000", "#111111", "#050505", "#330000"]
+    };
+
+    // --- STATE MANAGEMENT ---
+    let state = {
+        active: false,
+        mode: 'PPT', // 'PPT', 'STATIC', 'FIEND', 'CALM'
+        audioCtx: null,
+        frame: 0,
+        glitchIntensity: 0
+    };
+
+    const els = {
+        ppt: document.getElementById('ppt-layer'),
+        horror: document.getElementById('horror-layer'),
+        canvas: document.getElementById('fiend-canvas'),
+        ctx: document.getElementById('fiend-canvas').getContext('2d'),
+        title: document.getElementById('ppt-title'),
+        list: document.getElementById('ppt-content'),
+        rec: document.querySelector('.rec-tag'),
+        caption: document.getElementById('caption-text'),
+        img: document.getElementById('ppt-img')
+    };
+
+    // --- AUDIO ENGINE (Web Audio API) ---
+    class AudioEngine {
+        constructor() {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.connect(this.ctx.destination);
+            this.oscillators = [];
+        }
+
+        playDrone(type) {
+            // Calm, Corporate Drone
+            if (type === 'calm') {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(100 + Math.random() * 50, this.ctx.currentTime);
+                // Binaural beat effect
+                osc.frequency.linearRampToValueAtTime(102, this.ctx.currentTime + 10);
+                
+                gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + 2);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start();
+                this.oscillators.push({osc, gain});
+            }
+        }
+
+        playScarySound(intensity) {
+            // Generative Industrial Noise
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+            
+            osc.type = Math.random() > 0.5 ? 'sawtooth' : 'square';
+            
+            // Random dissonant frequencies
+            let freq = Math.random() * 100 + 40; 
+            if (intensity === 'high') freq = Math.random() * 1000 + 200; // Screech
+
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            // Pitch bend drop (doppler effect)
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, this.ctx.currentTime + 0.5);
+
+            filter.type = "lowpass";
+            filter.frequency.value = 500 + (Math.random() * 2000);
+
+            gain.gain.setValueAtTime(0, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 0.05); // Attack
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1); // Decay
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGain);
+            
+            osc.start();
+            osc.stop(this.ctx.currentTime + 1.5);
+        }
+
+        cutSound() {
+            // Abrupt Silence
+            this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, this.ctx.currentTime);
+            this.masterGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.01);
+            setTimeout(() => {
+                this.masterGain.gain.setValueAtTime(1, this.ctx.currentTime + 0.1);
+                this.oscillators.forEach(o => o.osc.stop());
+                this.oscillators = [];
+            }, 100);
+        }
+        
+        speak(text) {
+            if ('speechSynthesis' in window) {
+                const u = new SpeechSynthesisUtterance(text);
+                u.pitch = 0.5; // Demonic low pitch
+                u.rate = 0.8;  // Slow
+                window.speechSynthesis.speak(u);
+            }
+        }
+    }
+
+    // --- VISUAL ENGINE ---
+    class VisualEngine {
+        constructor() {
+            els.canvas.width = window.innerWidth;
+            els.canvas.height = window.innerHeight;
+            this.image = new Image();
+            this.fiendPoly = [];
+            this.generateFiendGeometry();
+        }
+
+        // Generate a jagged "Mask" polygon
+        generateFiendGeometry() {
+            this.fiendPoly = [];
+            const cx = els.canvas.width / 2;
+            const cy = els.canvas.height / 2;
+            const radius = 200;
+            
+            for (let i = 0; i < 20; i++) {
+                const angle = (i / 20) * Math.PI * 2;
+                const r = radius + (Math.random() - 0.5) * 100; // Jagged edges
+                this.fiendPoly.push({
+                    x: cx + Math.cos(angle) * r,
+                    y: cy + Math.sin(angle) * r
+                });
+            }
+        }
+
+        async scrapeImage() {
+            // Simulating scraping by grabbing vague creative commons placeholders
+            const keywords = CONFIG.horrorThemes[Math.floor(Math.random() * CONFIG.horrorThemes.length)];
+            // Using a timestamp to bypass cache
+            const url = `https://source.unsplash.com/1600x900/?${keywords}&sig=${Date.now()}`;
+            // Note: Since source.unsplash is deprecated/redirects, we use a reliable placeholder logic for reliability in code demo
+            // In a real deployed ARG, you'd host your own asset folder. 
+            // Fallback for demo:
+            this.image.src = `https://picsum.photos/1280/720?grayscale&blur=2&random=${Date.now()}`;
+        }
+
+        drawFiend(isGlitching) {
+            const ctx = els.ctx;
+            const w = els.canvas.width;
+            const h = els.canvas.height;
+
+            // Clear with static noise
+            if (Math.random() > 0.8) {
+                ctx.fillStyle = `rgba(${Math.random()*50}, 0, 0, 0.1)`;
+                ctx.fillRect(0,0,w,h);
+            }
+
+            // Draw the Mask
+            ctx.beginPath();
+            if (this.fiendPoly.length > 0) {
+                ctx.moveTo(this.fiendPoly[0].x + (Math.random()*10), this.fiendPoly[0].y);
+                for (let p of this.fiendPoly) {
+                    ctx.lineTo(p.x + (isGlitching ? (Math.random()-0.5)*50 : 0), p.y);
+                }
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+
+            // Eyes (Glowing)
+            ctx.fillStyle = Math.random() > 0.9 ? '#fff' : '#a00';
+            const eyeOffset = Math.sin(state.frame * 0.1) * 10;
+            ctx.fillRect((w/2) - 50 + eyeOffset, (h/2) - 20, 10, 10); // Left
+            ctx.fillRect((w/2) + 50 + eyeOffset, (h/2) - 20, 10, 10); // Right
+
+            // Tree of Life / Circuitry Overlay
+            if (state.frame % 10 === 0) {
+                ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
+                ctx.beginPath();
+                ctx.moveTo(w/2, h);
+                ctx.lineTo(w/2, h/2);
+                ctx.lineTo(w/2 - 100, h/2 - 100);
+                ctx.lineTo(w/2 + 100, h/2 - 100);
+                ctx.stroke();
+            }
+        }
+
+        drawScrapedImage() {
+            const ctx = els.ctx;
+            if (this.image.complete) {
+                // "Illogical Zoom" - Draw a small part of the image to the whole screen
+                const zoomX = Math.random() * (this.image.width - 200);
+                const zoomY = Math.random() * (this.image.height - 200);
+                
+                ctx.globalCompositeOperation = 'luminosity';
+                ctx.drawImage(this.image, zoomX, zoomY, 200, 200, 0, 0, els.canvas.width, els.canvas.height);
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+    }
+
+    // --- DIRECTOR (Logic) ---
+    const audio = new AudioEngine();
+    const visual = new VisualEngine();
+
+    function setMode(newMode) {
+        state.mode = newMode;
+        console.log(`SYSTEM_LOG: SWITCHING_TO_${newMode}`);
+        
+        if (newMode === 'PPT') {
+            els.ppt.style.opacity = 1;
+            els.horror.style.opacity = 0;
+            els.rec.style.display = 'none';
+            els.caption.style.display = 'none';
+            
+            // Generate boring content
+            const topic = CONFIG.pptTopics[Math.floor(Math.random() * CONFIG.pptTopics.length)];
+            els.title.innerText = topic.title;
+            els.list.innerHTML = topic.points.map(p => `<li class="slide-bullet">${p}</li>`).join('');
+            
+            audio.playDrone('calm');
+        } 
+        else if (newMode === 'FIEND') {
+            els.ppt.style.opacity = 0;
+            els.horror.style.opacity = 1;
+            els.rec.style.display = 'block';
+            els.caption.style.display = 'block';
+            els.caption.innerText = CONFIG.scrapedPhrases[Math.floor(Math.random()*CONFIG.scrapedPhrases.length)];
+            
+            // Encrypted Easter Egg in Console
+            const secret = "HELP ME";
+            const encoded = btoa(secret); // Base64
+            console.warn(`%c 0x8849: ${encoded}`, "color: red; background: black; font-size: 15px");
+            
+            audio.cutSound(); // Silence first
+            setTimeout(() => audio.playScarySound('low'), 500);
+            
+            visual.scrapeImage();
+            visual.generateFiendGeometry(); // New face
+        }
+    }
+
+    function gameLoop() {
+        if (!state.active) return;
+        state.frame++;
+
+        // Random Event Trigger
+        const chance = Math.random();
+
+        if (state.mode === 'PPT') {
+            // 1% chance to glitch per frame
+            if (chance > 0.995) {
+                els.ppt.style.transform = `skewX(${Math.random()*20}deg)`;
+                audio.playScarySound('low');
+                setTimeout(() => els.ppt.style.transform = 'none', 100);
+            }
+            
+            // Switch to horror
+            if (state.frame % 400 === 0 && chance > 0.5) {
+                setMode('FIEND');
+            }
+        }
+
+        else if (state.mode === 'FIEND') {
+            visual.drawFiend(Math.random() > 0.8);
+            
+            // Jumpscare Moment
+            if (chance > 0.99) {
+                visual.drawScrapedImage(); // Flash image
+                els.canvas.style.filter = "invert(1)";
+                audio.playScarySound('high');
+                setTimeout(() => els.canvas.style.filter = "contrast(1.5) brightness(0.8) sepia(1)", 100);
+            }
+
+            // Return to Normal
+            if (chance > 0.995 && state.frame % 100 === 0) {
+                setMode('PPT');
+            }
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    // --- INITIALIZATION ---
+    document.getElementById('start-btn').addEventListener('click', function() {
+        this.style.display = 'none';
+        state.active = true;
+        
+        // Fullscreen for immersion
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+        
+        // Start Loop
+        setMode('PPT');
+        gameLoop();
+        
+        // EASTER EGG: Keyboard listener
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 't') { // Tree of Life trigger
+                audio.speak("The roots are drinking blood.");
+                els.caption.innerText = "SEPHIROTH_ACTIVE";
+                visual.generateFiendGeometry();
+            }
+        });
+    });
+
+</script>
+</body>
+</html>
