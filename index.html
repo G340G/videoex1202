@@ -1,186 +1,230 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>D.E.S // EMERGENCY BROADCAST</title>
+<title>SEPHIROTH_V7 // ENTROPY BROADCAST</title>
 
 <style>
-body {
-  margin:0;
-  background:black;
-  color:white;
-  font-family:Courier New;
-  overflow:hidden;
-}
-
-canvas {
-  width:100vw;
-  height:100vh;
-}
-
+body{margin:0;background:black;color:white;font-family:Courier New;overflow:hidden}
+canvas{width:100vw;height:100vh}
 #overlay{
 position:absolute;
-width:100%;
-height:100%;
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
-background:black;
-z-index:10;
-}
-
+width:100%;height:100%;
+display:flex;flex-direction:column;
+justify-content:center;align-items:center;
+background:black;z-index:10}
 button{
 padding:20px 40px;
-background:black;
-color:white;
+background:black;color:white;
 border:1px solid white;
-cursor:pointer;
-}
-
-#progressbar{
-position:absolute;
-bottom:0;
-height:5px;
-background:red;
-width:0%;
-}
+letter-spacing:4px;cursor:pointer}
+#progress{
+position:absolute;bottom:0;height:4px;
+background:red;width:0%}
 </style>
 </head>
 <body>
 
 <div id="overlay">
 <h2>DEPARTMENT OF ETHEREAL SAFETY</h2>
-<button onclick="start()">INITIATE SIGNAL RECOVERY</button>
+<p>CHANNEL 88 — SIGNAL RECOVERY NODE</p>
+<button onclick="start()">INITIATE DECODING</button>
 </div>
 
 <canvas id="c" width="1280" height="720"></canvas>
-<div id="progressbar"></div>
+<div id="progress"></div>
 
 <script>
 
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
 
 let audioCtx;
+let mediaDest;
 let recorder;
 let chunks=[];
 let frame=0;
-let recording=false;
-let scrapedText="INITIALIZING DATABASE...";
-let glitchFrame=false;
+let running=false;
+let scrapedText="";
+let scrapedImage=new Image();
+let glitch=false;
+let signalID=Math.random().toString(16).slice(2);
+let chapter=0;
 
 //////////////////////////////////////////////////////////
-// SCRAPE REAL TEXT FROM WIKIPEDIA API
+// SCRAPING SYSTEM
 //////////////////////////////////////////////////////////
 
-async function scrape(){
+async function scrapeData(){
 
-try{
-
-const topics=["Psychology","Signal processing","Memory","Perception","Surveillance","Neural network","Dream"];
+const topics=[
+"Consciousness","Surveillance",
+"Signal processing","Neural network",
+"Dream","Hypnosis","Memory",
+"Psychological operations"
+];
 
 const topic=topics[Math.floor(Math.random()*topics.length)];
 
+try{
 const res=await fetch(
 "https://en.wikipedia.org/api/rest_v1/page/summary/"+topic
 );
-
 const data=await res.json();
-
 scrapedText=data.extract;
-
 }catch{
-
-scrapedText="DATA CORRUPTION DETECTED";
-
+scrapedText="ARCHIVAL CORRUPTION DETECTED.";
 }
+
+scrapedImage.src=
+"https://source.unsplash.com/800x600/?"+topic+"&sig="+Math.random();
 
 }
 
 //////////////////////////////////////////////////////////
-// AUDIO ENGINE
+// AUDIO ENGINE (ALL AUDIO ROUTED INTO RECORDING)
 //////////////////////////////////////////////////////////
 
 function setupAudio(){
 
-audioCtx=new AudioContext();
+audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+mediaDest=audioCtx.createMediaStreamDestination();
 
-const dest=audioCtx.createMediaStreamDestination();
+const masterGain=audioCtx.createGain();
+masterGain.gain.value=0.8;
 
+masterGain.connect(mediaDest);
+masterGain.connect(audioCtx.destination);
+
+// deep drone
 const drone=audioCtx.createOscillator();
-const gain=audioCtx.createGain();
+const droneGain=audioCtx.createGain();
 
-drone.frequency.value=37;
-gain.gain.value=0.1;
+drone.type="sine";
+drone.frequency.value=33;
+droneGain.gain.value=0.15;
 
-drone.connect(gain);
-gain.connect(dest);
-gain.connect(audioCtx.destination);
+drone.connect(droneGain);
+droneGain.connect(masterGain);
 
 drone.start();
 
-return dest.stream;
+// noise layer
+const buffer=audioCtx.createBuffer(1,44100*2,44100);
+const data=buffer.getChannelData(0);
+for(let i=0;i<data.length;i++)
+data[i]=Math.random()*2-1;
 
+const noise=audioCtx.createBufferSource();
+noise.buffer=buffer;
+noise.loop=true;
+
+const noiseGain=audioCtx.createGain();
+noiseGain.gain.value=0.02;
+
+noise.connect(noiseGain);
+noiseGain.connect(masterGain);
+noise.start();
+
+return mediaDest.stream;
 }
 
-function jumpscareSound(){
+function jumpscare(){
 
 const osc=audioCtx.createOscillator();
 const gain=audioCtx.createGain();
 
-osc.frequency.value=800;
-gain.gain.value=1;
+osc.type="sawtooth";
+osc.frequency.setValueAtTime(800,audioCtx.currentTime);
+osc.frequency.exponentialRampToValueAtTime(40,audioCtx.currentTime+.2);
+
+gain.gain.setValueAtTime(1,audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.3);
 
 osc.connect(gain);
+gain.connect(mediaDest);
 gain.connect(audioCtx.destination);
 
 osc.start();
-osc.stop(audioCtx.currentTime+.2);
+osc.stop(audioCtx.currentTime+.3);
 
 }
 
 //////////////////////////////////////////////////////////
-// PROFESSIONAL PSA TEMPLATE
+// BROADCAST VISUAL SYSTEM
 //////////////////////////////////////////////////////////
 
-function drawPSA(){
+function drawTemplate(){
 
-ctx.fillStyle="#001122";
+ctx.fillStyle="#001020";
 ctx.fillRect(0,0,1280,720);
 
 ctx.strokeStyle="white";
-ctx.strokeRect(50,50,1180,620);
+ctx.strokeRect(40,40,1200,640);
 
 ctx.font="40px Courier New";
 ctx.fillText("EMERGENCY BROADCAST SYSTEM",80,120);
 
 ctx.font="20px Courier New";
 
-wrapText(scrapedText,80,200,1000,30);
+wrap(scrapedText,80,200,1000,28);
 
-ctx.font="15px Courier New";
+if(scrapedImage.complete){
+ctx.globalAlpha=.35;
+ctx.drawImage(scrapedImage,700,300,450,300);
+ctx.globalAlpha=1;
+}
 
-ctx.fillText("SIGNAL ID: "+Math.random().toString(16).slice(2),80,650);
-
-ctx.fillText("FRAME: "+frame,400,650);
-
-ctx.fillText("STATUS: ACTIVE",600,650);
+drawTechnicalOverlay();
 
 }
 
-//////////////////////////////////////////////////////////
-// ENTITY JUMPSCARE
-//////////////////////////////////////////////////////////
+function drawTechnicalOverlay(){
 
-function drawJumpscare(){
+ctx.font="14px Courier New";
+
+ctx.fillText("SIGNAL ID: "+signalID,80,670);
+ctx.fillText("FRAME: "+frame,350,670);
+ctx.fillText("CHAPTER: "+chapter,500,670);
+ctx.fillText("CHECKSUM: "+
+(Math.random().toString(16).slice(2,10)),700,670);
+
+ctx.strokeStyle="rgba(255,255,255,.2)";
+ctx.beginPath();
+for(let i=0;i<1280;i+=20)
+ctx.lineTo(i,360+Math.sin(i*.01+frame*.02)*20);
+ctx.stroke();
+
+}
+
+function drawEntity(){
 
 ctx.fillStyle="white";
 ctx.fillRect(0,0,1280,720);
 
 ctx.fillStyle="black";
 ctx.font="120px Courier New";
-ctx.fillText("LOOK AT IT",200,400);
+ctx.fillText("IT SEES YOU",150,380);
+
+}
+
+//////////////////////////////////////////////////////////
+// GLITCH SYSTEM
+//////////////////////////////////////////////////////////
+
+function glitchFrame(){
+
+const sliceY=Math.random()*700;
+const sliceH=20+Math.random()*100;
+
+ctx.drawImage(
+canvas,
+0,sliceY,1280,sliceH,
+Math.random()*20-10,
+sliceY,
+1280,
+sliceH
+);
 
 }
 
@@ -188,112 +232,95 @@ ctx.fillText("LOOK AT IT",200,400);
 // TEXT WRAP
 //////////////////////////////////////////////////////////
 
-function wrapText(text,x,y,maxWidth,lineHeight){
+function wrap(text,x,y,max,lineHeight){
 
 const words=text.split(" ");
 let line="";
 
 for(let n=0;n<words.length;n++){
-
-const testLine=line+words[n]+" ";
-
-const metrics=ctx.measureText(testLine);
-
-if(metrics.width>maxWidth){
-
+const test=line+words[n]+" ";
+if(ctx.measureText(test).width>max){
 ctx.fillText(line,x,y);
-
 line=words[n]+" ";
-
 y+=lineHeight;
-
-}else{
-
-line=testLine;
-
+}else line=test;
 }
-
-}
-
 ctx.fillText(line,x,y);
-
 }
 
 //////////////////////////////////////////////////////////
-// MAIN RENDER LOOP
+// MAIN LOOP
 //////////////////////////////////////////////////////////
 
-function render(){
+function loop(){
 
-if(!recording)return;
+if(!running)return;
 
 frame++;
+document.getElementById("progress").style.width=
+(frame/2400*100)+"%";
 
-document.getElementById("progressbar").style.width=
-(frame/1800*100)+"%";
+if(frame%600===0){
+chapter++;
+scrapeData();
+}
 
 if(Math.random()>.995){
-
-glitchFrame=true;
-
-jumpscareSound();
-
+glitch=true;
+jumpscare();
 }
 
-if(glitchFrame){
-
-drawJumpscare();
-
-if(Math.random()>.9)glitchFrame=false;
-
+if(glitch){
+drawEntity();
+if(Math.random()>.8)glitch=false;
 }else{
-
-drawPSA();
-
+drawTemplate();
+if(Math.random()>.9)glitchFrame();
 }
 
-if(frame<1800){
-
-requestAnimationFrame(render);
-
-}else{
-
-stop();
-
-}
+if(frame<2400)
+requestAnimationFrame(loop);
+else stop();
 
 }
 
 //////////////////////////////////////////////////////////
-// RECORD
+// START
 //////////////////////////////////////////////////////////
 
-function start(){
+async function start(){
 
 document.getElementById("overlay").style.display="none";
 
-scrape();
+await scrapeData();
 
-const audio=setupAudio();
-
-const stream=canvas.captureStream(60);
+const audioStream=setupAudio();
+const canvasStream=canvas.captureStream(60);
 
 const combined=new MediaStream([
-...stream.getTracks(),
-...audio.getTracks()
+...canvasStream.getVideoTracks(),
+...audioStream.getAudioTracks()
 ]);
 
-recorder=new MediaRecorder(combined);
+let mimeType="video/webm;codecs=vp9,opus";
 
-recorder.ondataavailable=e=>chunks.push(e.data);
+if(!MediaRecorder.isTypeSupported(mimeType))
+mimeType="video/webm;codecs=vp8,opus";
+
+recorder=new MediaRecorder(combined,{mimeType});
+
+chunks=[];
+
+recorder.ondataavailable=e=>{
+if(e.data.size>0)chunks.push(e.data);
+};
 
 recorder.onstop=save;
 
 recorder.start();
 
-recording=true;
-
-render();
+running=true;
+loop();
 
 }
 
@@ -302,11 +329,8 @@ render();
 //////////////////////////////////////////////////////////
 
 function stop(){
-
-recording=false;
-
+running=false;
 recorder.stop();
-
 }
 
 //////////////////////////////////////////////////////////
@@ -315,16 +339,12 @@ recorder.stop();
 
 function save(){
 
-const blob=new Blob(chunks,{type:"video/webm"});
-
+const blob=new Blob(chunks,{type:recorder.mimeType});
 const url=URL.createObjectURL(blob);
 
 const a=document.createElement("a");
-
 a.href=url;
-
-a.download="DES_RECOVERY_"+Date.now()+".webm";
-
+a.download="SEPHIROTH_V7_"+Date.now()+".webm";
 a.click();
 
 }
@@ -332,5 +352,4 @@ a.click();
 </script>
 </body>
 </html>
-
 
