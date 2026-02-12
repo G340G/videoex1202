@@ -1,355 +1,248 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>SEPHIROTH_V7 // ENTROPY BROADCAST</title>
+    <meta charset="UTF-8">
+    <title>SEPHIROTH_V8 // ENTROPY_NODE_88</title>
+    <style>
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: contrast(1.1) brightness(0.8); }
+        
+        #overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; 
+            background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        }
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+        
+        .scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%; opacity: 0.8;
+        }
 
-<style>
-body{margin:0;background:black;color:white;font-family:Courier New;overflow:hidden}
-canvas{width:100vw;height:100vh}
-#overlay{
-position:absolute;
-width:100%;height:100%;
-display:flex;flex-direction:column;
-justify-content:center;align-items:center;
-background:black;z-index:10}
-button{
-padding:20px 40px;
-background:black;color:white;
-border:1px solid white;
-letter-spacing:4px;cursor:pointer}
-#progress{
-position:absolute;bottom:0;height:4px;
-background:red;width:0%}
-</style>
+        button { 
+            padding: 15px 40px; border: 1px solid #444; background: transparent; color: #888; 
+            letter-spacing: 5px; cursor: pointer; transition: 0.5s; 
+        }
+        button:hover { border-color: #f00; color: #fff; text-shadow: 0 0 10px #f00; }
+        
+        #progress-bar { position: absolute; bottom: 0; left: 0; height: 2px; background: #f00; width: 0%; transition: width 0.1s; }
+    </style>
 </head>
 <body>
 
 <div id="overlay">
-<h2>DEPARTMENT OF ETHEREAL SAFETY</h2>
-<p>CHANNEL 88 — SIGNAL RECOVERY NODE</p>
-<button onclick="start()">INITIATE DECODING</button>
+    <h2 style="letter-spacing: 15px; font-weight: 100; color: #444;">D.E.S. ARCHIVE</h2>
+    <p style="font-size: 0.7rem; color: #222; margin-bottom: 40px;">SECURE_HANDSHAKE_REQUIRED</p>
+    <button id="startTrigger">INITIATE DECODING</button>
 </div>
 
-<canvas id="c" width="1280" height="720"></canvas>
-<div id="progress"></div>
+<div id="canvas-container">
+    <canvas id="mainCanvas" width="1280" height="720"></canvas>
+    <div id="ui-overlay"><div class="scanlines"></div><div id="progress-bar"></div></div>
+</div>
 
 <script>
-
-const canvas=document.getElementById("c");
-const ctx=canvas.getContext("2d");
-
-let audioCtx;
-let mediaDest;
-let recorder;
-let chunks=[];
-let frame=0;
-let running=false;
-let scrapedText="";
-let scrapedImage=new Image();
-let glitch=false;
-let signalID=Math.random().toString(16).slice(2);
-let chapter=0;
-
-//////////////////////////////////////////////////////////
-// SCRAPING SYSTEM
-//////////////////////////////////////////////////////////
-
-async function scrapeData(){
-
-const topics=[
-"Consciousness","Surveillance",
-"Signal processing","Neural network",
-"Dream","Hypnosis","Memory",
-"Psychological operations"
-];
-
-const topic=topics[Math.floor(Math.random()*topics.length)];
-
-try{
-const res=await fetch(
-"https://en.wikipedia.org/api/rest_v1/page/summary/"+topic
-);
-const data=await res.json();
-scrapedText=data.extract;
-}catch{
-scrapedText="ARCHIVAL CORRUPTION DETECTED.";
-}
-
-scrapedImage.src=
-"https://source.unsplash.com/800x600/?"+topic+"&sig="+Math.random();
-
-}
-
-//////////////////////////////////////////////////////////
-// AUDIO ENGINE (ALL AUDIO ROUTED INTO RECORDING)
-//////////////////////////////////////////////////////////
-
-function setupAudio(){
-
-audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-mediaDest=audioCtx.createMediaStreamDestination();
-
-const masterGain=audioCtx.createGain();
-masterGain.gain.value=0.8;
-
-masterGain.connect(mediaDest);
-masterGain.connect(audioCtx.destination);
-
-// deep drone
-const drone=audioCtx.createOscillator();
-const droneGain=audioCtx.createGain();
-
-drone.type="sine";
-drone.frequency.value=33;
-droneGain.gain.value=0.15;
-
-drone.connect(droneGain);
-droneGain.connect(masterGain);
-
-drone.start();
-
-// noise layer
-const buffer=audioCtx.createBuffer(1,44100*2,44100);
-const data=buffer.getChannelData(0);
-for(let i=0;i<data.length;i++)
-data[i]=Math.random()*2-1;
-
-const noise=audioCtx.createBufferSource();
-noise.buffer=buffer;
-noise.loop=true;
-
-const noiseGain=audioCtx.createGain();
-noiseGain.gain.value=0.02;
-
-noise.connect(noiseGain);
-noiseGain.connect(masterGain);
-noise.start();
-
-return mediaDest.stream;
-}
-
-function jumpscare(){
-
-const osc=audioCtx.createOscillator();
-const gain=audioCtx.createGain();
-
-osc.type="sawtooth";
-osc.frequency.setValueAtTime(800,audioCtx.currentTime);
-osc.frequency.exponentialRampToValueAtTime(40,audioCtx.currentTime+.2);
-
-gain.gain.setValueAtTime(1,audioCtx.currentTime);
-gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.3);
-
-osc.connect(gain);
-gain.connect(mediaDest);
-gain.connect(audioCtx.destination);
-
-osc.start();
-osc.stop(audioCtx.currentTime+.3);
-
-}
-
-//////////////////////////////////////////////////////////
-// BROADCAST VISUAL SYSTEM
-//////////////////////////////////////////////////////////
-
-function drawTemplate(){
-
-ctx.fillStyle="#001020";
-ctx.fillRect(0,0,1280,720);
-
-ctx.strokeStyle="white";
-ctx.strokeRect(40,40,1200,640);
-
-ctx.font="40px Courier New";
-ctx.fillText("EMERGENCY BROADCAST SYSTEM",80,120);
-
-ctx.font="20px Courier New";
-
-wrap(scrapedText,80,200,1000,28);
-
-if(scrapedImage.complete){
-ctx.globalAlpha=.35;
-ctx.drawImage(scrapedImage,700,300,450,300);
-ctx.globalAlpha=1;
-}
-
-drawTechnicalOverlay();
-
-}
-
-function drawTechnicalOverlay(){
-
-ctx.font="14px Courier New";
-
-ctx.fillText("SIGNAL ID: "+signalID,80,670);
-ctx.fillText("FRAME: "+frame,350,670);
-ctx.fillText("CHAPTER: "+chapter,500,670);
-ctx.fillText("CHECKSUM: "+
-(Math.random().toString(16).slice(2,10)),700,670);
-
-ctx.strokeStyle="rgba(255,255,255,.2)";
-ctx.beginPath();
-for(let i=0;i<1280;i+=20)
-ctx.lineTo(i,360+Math.sin(i*.01+frame*.02)*20);
-ctx.stroke();
-
-}
-
-function drawEntity(){
-
-ctx.fillStyle="white";
-ctx.fillRect(0,0,1280,720);
-
-ctx.fillStyle="black";
-ctx.font="120px Courier New";
-ctx.fillText("IT SEES YOU",150,380);
-
-}
-
-//////////////////////////////////////////////////////////
-// GLITCH SYSTEM
-//////////////////////////////////////////////////////////
-
-function glitchFrame(){
-
-const sliceY=Math.random()*700;
-const sliceH=20+Math.random()*100;
-
-ctx.drawImage(
-canvas,
-0,sliceY,1280,sliceH,
-Math.random()*20-10,
-sliceY,
-1280,
-sliceH
-);
-
-}
-
-//////////////////////////////////////////////////////////
-// TEXT WRAP
-//////////////////////////////////////////////////////////
-
-function wrap(text,x,y,max,lineHeight){
-
-const words=text.split(" ");
-let line="";
-
-for(let n=0;n<words.length;n++){
-const test=line+words[n]+" ";
-if(ctx.measureText(test).width>max){
-ctx.fillText(line,x,y);
-line=words[n]+" ";
-y+=lineHeight;
-}else line=test;
-}
-ctx.fillText(line,x,y);
-}
-
-//////////////////////////////////////////////////////////
-// MAIN LOOP
-//////////////////////////////////////////////////////////
-
-function loop(){
-
-if(!running)return;
-
-frame++;
-document.getElementById("progress").style.width=
-(frame/2400*100)+"%";
-
-if(frame%600===0){
-chapter++;
-scrapeData();
-}
-
-if(Math.random()>.995){
-glitch=true;
-jumpscare();
-}
-
-if(glitch){
-drawEntity();
-if(Math.random()>.8)glitch=false;
-}else{
-drawTemplate();
-if(Math.random()>.9)glitchFrame();
-}
-
-if(frame<2400)
-requestAnimationFrame(loop);
-else stop();
-
-}
-
-//////////////////////////////////////////////////////////
-// START
-//////////////////////////////////////////////////////////
-
-async function start(){
-
-document.getElementById("overlay").style.display="none";
-
-await scrapeData();
-
-const audioStream=setupAudio();
-const canvasStream=canvas.captureStream(60);
-
-const combined=new MediaStream([
-...canvasStream.getVideoTracks(),
-...audioStream.getAudioTracks()
-]);
-
-let mimeType="video/webm;codecs=vp9,opus";
-
-if(!MediaRecorder.isTypeSupported(mimeType))
-mimeType="video/webm;codecs=vp8,opus";
-
-recorder=new MediaRecorder(combined,{mimeType});
-
-chunks=[];
-
-recorder.ondataavailable=e=>{
-if(e.data.size>0)chunks.push(e.data);
-};
-
-recorder.onstop=save;
-
-recorder.start();
-
-running=true;
-loop();
-
-}
-
-//////////////////////////////////////////////////////////
-// STOP
-//////////////////////////////////////////////////////////
-
-function stop(){
-running=false;
-recorder.stop();
-}
-
-//////////////////////////////////////////////////////////
-// SAVE
-//////////////////////////////////////////////////////////
-
-function save(){
-
-const blob=new Blob(chunks,{type:recorder.mimeType});
-const url=URL.createObjectURL(blob);
-
-const a=document.createElement("a");
-a.href=url;
-a.download="SEPHIROTH_V7_"+Date.now()+".webm";
-a.click();
-
-}
-
+(function() {
+    "use strict";
+
+    const canvas = document.getElementById("mainCanvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const startBtn = document.getElementById("startTrigger");
+    const progress = document.getElementById("progress-bar");
+
+    let state = {
+        running: false,
+        frame: 0,
+        maxFrames: 2100, // ~35 seconds at 60fps
+        scrapedText: "INITIALIZING_CONNECTION...",
+        scrapedImg: new Image(),
+        recorder: null,
+        chunks: [],
+        audio: { ctx: null, dest: null },
+        entityActive: false
+    };
+
+    // --- DATA SCRAPING ---
+    async function fetchData() {
+        const keywords = ["Liminal_space", "Apophenia", "Pareidolia", "MKUltra", "Signal-to-noise_ratio"];
+        const k = keywords[Math.floor(Math.random() * keywords.length)];
+        try {
+            const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${k}`);
+            const data = await res.json();
+            state.scrapedText = data.extract || "CORRUPTION_IN_DATA_STREAM";
+        } catch { state.scrapedText = "ARCHIVE_NOT_FOUND. SYSTEM_FAILURE."; }
+        
+        state.scrapedImg.src = `https://picsum.photos/1280/720?grayscale&blur=2&t=${Date.now()}`;
+    }
+
+    // --- AUDIO ENGINE ---
+    function initAudio() {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        state.audio.ctx = new AC();
+        state.audio.dest = state.audio.ctx.createMediaStreamDestination();
+
+        // 40Hz Binaural Drone
+        const osc1 = state.audio.ctx.createOscillator();
+        const osc2 = state.audio.ctx.createOscillator();
+        const gain = state.audio.ctx.createGain();
+        osc1.frequency.value = 40;
+        osc2.frequency.value = 41.5; // Creates a "beat" in the brain
+        gain.gain.value = 0.2;
+
+        osc1.connect(gain); osc2.connect(gain);
+        gain.connect(state.audio.dest);
+        gain.connect(state.audio.ctx.destination);
+        osc1.start(); osc2.start();
+    }
+
+    function playSting(freq, vol = 0.4) {
+        const osc = state.audio.ctx.createOscillator();
+        const g = state.audio.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, state.audio.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1, state.audio.ctx.currentTime + 0.5);
+        g.gain.setValueAtTime(vol, state.audio.ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0, state.audio.ctx.currentTime + 0.5);
+        osc.connect(g).connect(state.audio.dest);
+        osc.connect(g).connect(state.audio.ctx.destination);
+        osc.start(); osc.stop(state.audio.ctx.currentTime + 0.6);
+    }
+
+    // --- RENDERERS ---
+    function drawTree(x, y, len, angle, branchWidth) {
+        ctx.beginPath();
+        ctx.save();
+        ctx.strokeStyle = `rgba(255,0,0,${branchWidth * 0.1})`;
+        ctx.lineWidth = branchWidth;
+        ctx.translate(x, y);
+        ctx.rotate(angle * Math.PI / 180);
+        ctx.moveTo(0, 0); ctx.lineTo(0, -len);
+        ctx.stroke();
+        if (len < 10) { ctx.restore(); return; }
+        drawTree(0, -len, len * 0.7, angle - 20, branchWidth * 0.7);
+        drawTree(0, -len, len * 0.7, angle + 20, branchWidth * 0.7);
+        ctx.restore();
+    }
+
+    function drawMayanFiend() {
+        ctx.save();
+        ctx.translate(640, 360);
+        const flicker = Math.random() > 0.9 ? 1 : 0.4;
+        
+        ctx.fillStyle = "#0a0a0a";
+        ctx.beginPath();
+        ctx.moveTo(-150, -200); ctx.lineTo(150, -200); ctx.lineTo(180, 50); ctx.lineTo(0, 250); ctx.lineTo(-180, 50);
+        ctx.fill(); ctx.strokeStyle = "#222"; ctx.stroke();
+
+        // Shiny glowing eyes
+        ctx.fillStyle = `rgba(255,255,255,${flicker})`;
+        ctx.shadowBlur = 20 * flicker; ctx.shadowColor = "#fff";
+        ctx.fillRect(-80, -100, 50, 8); ctx.fillRect(30, -100, 50, 8);
+        ctx.restore();
+    }
+
+    function drawPSA() {
+        ctx.fillStyle = "#00050a";
+        ctx.fillRect(0,0,1280,720);
+        
+        ctx.strokeStyle = "#333";
+        ctx.strokeRect(40,40,1200,640);
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 30px Courier New";
+        ctx.fillText("DEPARTMENT OF ETHEREAL SAFETY", 80, 100);
+        
+        ctx.font = "16px Courier New";
+        const lines = state.scrapedText.match(/.{1,80}(\s|$)/g) || [];
+        lines.slice(0, 10).forEach((line, i) => {
+            // Randomly "Redact" words
+            const content = Math.random() > 0.95 ? "███████████" : line;
+            ctx.fillText(content, 80, 180 + (i * 25));
+        });
+
+        if (state.scrapedImg.complete) {
+            ctx.globalAlpha = 0.2;
+            // Illogical Zoom
+            ctx.drawImage(state.scrapedImg, 100, 100, 200, 200, 700, 350, 450, 300);
+            ctx.globalAlpha = 1.0;
+        }
+        
+        drawTree(1100, 600, 40, 0, 5);
+    }
+
+    // --- MAIN ENGINE ---
+    function loop() {
+        if (!state.running) return;
+        state.frame++;
+        
+        progress.style.width = `${(state.frame / state.maxFrames) * 100}%`;
+
+        if (state.frame % 450 < 300) {
+            state.entityActive = false;
+            drawPSA();
+        } else {
+            if (!state.entityActive) {
+                playSting(60);
+                state.entityActive = true;
+            }
+            ctx.fillStyle = "#000"; ctx.fillRect(0,0,1280,720);
+            drawMayanFiend();
+        }
+
+        // Random Technical Glitch
+        if (Math.random() > 0.98) {
+            const y = Math.random() * 720;
+            ctx.drawImage(canvas, 0, y, 1280, 10, Math.random() * 20 - 10, y, 1280, 10);
+        }
+
+        if (state.frame >= state.maxFrames) stop();
+        else requestAnimationFrame(loop);
+    }
+
+    async function start() {
+        document.getElementById("overlay").style.display = "none";
+        await fetchData();
+        initAudio();
+
+        const canvasStream = canvas.captureStream(60);
+        const combined = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...state.audio.dest.stream.getAudioTracks()
+        ]);
+
+        state.recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp9,opus' });
+        state.recorder.ondataavailable = e => state.chunks.push(e.data);
+        state.recorder.onstop = save;
+        
+        state.recorder.start();
+        state.running = true;
+        loop();
+
+        // TTS voiceover (English)
+        const utter = new SpeechSynthesisUtterance("Warning. Ethereal entropy levels are exceeding safety thresholds. Do not attempt to synchronize with the broadcast.");
+        utter.pitch = 0.1; utter.rate = 0.8; utter.lang = 'en-US';
+        window.speechSynthesis.speak(utter);
+    }
+
+    function stop() {
+        state.running = false;
+        state.recorder.stop();
+    }
+
+    function save() {
+        const blob = new Blob(state.chunks, { type: 'video/webm' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `SEPHIROTH_NODE88_${Date.now()}.webm`;
+        a.click();
+        window.location.reload(); // Reset for next iteration
+    }
+
+    startBtn.addEventListener("click", start);
+
+})();
 </script>
 </body>
 </html>
-
