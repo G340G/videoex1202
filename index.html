@@ -1,268 +1,321 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>D.E.S. // PROJECT_SEPHIROTH_V7</title>
-    <style>
-        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; }
-        #container { position: relative; width: 100vw; height: 100vh; background: #050505; }
-        canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; filter: contrast(1.2) brightness(0.9); }
-        
-        /* THE OVERLAY */
-        #boot-screen { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #000; z-index: 1000; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; text-align: center;
-        }
-        #progress-bar { width: 300px; height: 4px; background: #222; margin-top: 20px; position: relative; display: none;}
-        #progress-fill { width: 0%; height: 100%; background: #f00; transition: width 0.1s; }
+<meta charset="UTF-8">
+<title>DEPARTMENT_OF_ETHEREAL_SAFETY // RECOVERY_88</title>
 
-        .vhs-lines { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
-            background-size: 100% 4px, 4px 100%;
-        }
+<style>
+body, html {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+  font-family: 'Courier New', monospace;
+  color: #fff;
+  cursor: none;
+}
 
-        button { 
-            padding: 15px 40px; background: transparent; color: #f00; border: 1px solid #f00; 
-            letter-spacing: 5px; cursor: pointer; font-size: 1rem; transition: 0.3s;
-        }
-        button:hover { background: #f00; color: #000; box-shadow: 0 0 30px #f00; }
-    </style>
+#canvas-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  background: #050505;
+  image-rendering: pixelated;
+}
+
+#overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#status-bar {
+  position: absolute;
+  bottom: 20px;
+  width: 80%;
+  height: 5px;
+  background: #222;
+  display: none;
+}
+
+#progress {
+  height: 100%;
+  background: #f00;
+  width: 0%;
+  transition: width 0.1s;
+}
+
+button {
+  padding: 20px 50px;
+  border: 1px solid #555;
+  background: transparent;
+  color: #fff;
+  letter-spacing: 5px;
+  cursor: pointer;
+}
+</style>
 </head>
 <body>
 
-<div id="boot-screen">
-    <h1 style="letter-spacing: 12px; color: #fff;">SIGNAL RECOVERY</h1>
-    <p style="color: #444; font-size: 0.7rem; margin-bottom: 30px;">[ DEPARTMENT OF ETHEREAL SAFETY // 1988 ]</p>
-    <button id="trigger">DECODE BROADCAST</button>
-    <div id="progress-bar"><div id="progress-fill"></div></div>
+<div id="overlay">
+  <h2 style="letter-spacing: 10px; opacity: 0.7;">PROJECT SEPHIROTH</h2>
+  <p style="margin-bottom: 30px; font-size: 0.8rem; color: #555;">
+    [ AUTHENTIC_SIGNAL_DECODING_MODE ]
+  </p>
+  <button id="startBtn">INITIATE BROADCAST</button>
+  <div id="status-bar"><div id="progress"></div></div>
 </div>
 
-<div id="container">
-    <canvas id="output"></canvas>
-    <div class="vhs-lines"></div>
+<div id="canvas-container">
+  <canvas id="glitchCanvas" width="1280" height="720"></canvas>
 </div>
 
 <script>
-(function() {
-    /** * SEPHIROTH V7: THE FINAL BROADCAST
-     * Encapsulated to prevent "Redeclaration" errors.
-     */
-    const canvas = document.getElementById('output');
-    const ctx = canvas.getContext('2d');
-    const btn = document.getElementById('trigger');
-    const bar = document.getElementById('progress-bar');
-    const fill = document.getElementById('progress-fill');
+const canvas = document.getElementById('glitchCanvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('startBtn');
+const progress = document.getElementById('progress');
 
-    canvas.width = 1280;
-    canvas.height = 720;
+let audioCtx;
+let recorder;
+let audioDest;
+let chunks = [];
+let frame = 0;
+let isRecording = false;
+let currentTheme = null;
+let scrapedImage = new Image();
 
-    let state = {
-        frame: 0,
-        isRecording: false,
-        theme: null,
-        img: new Image(),
-        chunks: [],
-        recorder: null,
-        audio: { ctx: null, dest: null }
-    };
+const PSA_THEMES = [
+  {
+    title: "ATMOSPHERIC STABILITY",
+    instruction: "REMAIN IN LOWER LEVELS",
+    voice: "Atmospheric stability is compromised. Remain in lower levels."
+  },
+  {
+    title: "GEOGRAPHICAL DISPLACEMENT",
+    instruction: "IGNORE NEW LANDMARKS",
+    voice: "Geographical displacement detected. Ignore all new landmarks."
+  },
+  {
+    title: "COGNITIVE MAINTENANCE",
+    instruction: "CEASE ALL REFLECTION",
+    voice: "Cognitive maintenance required. Cease all internal reflection."
+  }
+];
 
-    const THEMES = [
-        { name: "VEIN_EXTRACTION", color: "#300", msg: "UPGRADE THE VESTIGIAL FLESH", voice: "Upgrade the vestigial flesh. The roots require sustenance." },
-        { name: "VOID_OBSERVATION", color: "#003", msg: "THE SKY IS A MIRROR", voice: "The sky is a mirror. Do not look into the reflection." },
-        { name: "DATA_RECOVERY", color: "#020", msg: "LOG_0x8849: DISAPPEARED", voice: "Missing personnel log 8 8 4 9. Signal lost in the wires." }
-    ];
+/* ===================== AUDIO ===================== */
 
-    // --- SOUNDSCAPE GENERATOR ---
-    function initSound() {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        state.audio.ctx = new AC();
-        state.audio.dest = state.audio.ctx.createMediaStreamDestination();
+function setupAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
 
-        // The "Unease" Drone (Binaural 40Hz/44Hz)
-        const osc1 = state.audio.ctx.createOscillator();
-        const osc2 = state.audio.ctx.createOscillator();
-        const g = state.audio.ctx.createGain();
-        osc1.frequency.value = 40;
-        osc2.frequency.value = 44;
-        g.gain.value = 0.15;
-        
-        osc1.connect(g); osc2.connect(g);
-        g.connect(state.audio.dest);
-        g.connect(state.audio.ctx.destination);
-        osc1.start(); osc2.start();
+  audioDest = audioCtx.createMediaStreamDestination();
 
-        // Melodic FM Synth (Eerie Bells)
-        setInterval(() => {
-            if(Math.random() > 0.7) playBell(200 + Math.random() * 400);
-        }, 3000);
+  const drone = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  drone.type = "sine";
+  drone.frequency.value = 40;
+  gain.gain.value = 0.08;
+
+  drone.connect(gain);
+  gain.connect(audioDest);
+  gain.connect(audioCtx.destination);
+
+  drone.start();
+
+  return audioDest.stream;
+}
+
+function playSting() {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = "sawtooth";
+  osc.frequency.value = Math.random() * 200 + 80;
+
+  gain.gain.value = 0.3;
+
+  osc.connect(gain);
+  gain.connect(audioDest);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.3);
+}
+
+/* ===================== VISUAL ===================== */
+
+function drawFiend() {
+  ctx.save();
+  ctx.translate(640, 360);
+
+  ctx.fillStyle = "#111";
+  ctx.strokeStyle = "#444";
+  ctx.lineWidth = 4;
+
+  ctx.beginPath();
+  ctx.moveTo(-180, -250);
+  ctx.lineTo(180, -250);
+  ctx.lineTo(200, 50);
+  ctx.lineTo(0, 300);
+  ctx.lineTo(-200, 50);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  const flicker = Math.random() > 0.95 ? 1 : 0.5;
+
+  ctx.shadowBlur = 25 * flicker;
+  ctx.shadowColor = "white";
+  ctx.fillStyle = `rgba(255,255,255,${flicker})`;
+
+  ctx.fillRect(-90, -120, 50, 10);
+  ctx.fillRect(40, -120, 50, 10);
+
+  ctx.restore();
+}
+
+function render() {
+  if (!isRecording) return;
+
+  frame++;
+  progress.style.width = ((frame / 2100) * 100) + "%";
+
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (frame % 400 < 250) {
+
+    ctx.fillStyle = "#000033";
+    ctx.fillRect(40, 40, 1200, 640);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 40px Courier New";
+    ctx.fillText("D.E.S. BROADCAST // " + currentTheme.title, 80, 120);
+
+    ctx.font = "24px Courier New";
+    ctx.fillText("STATUS: " + currentTheme.instruction, 80, 170);
+
+    ctx.strokeStyle = "#555";
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      ctx.lineTo(100 + i * 100, 500 - Math.random() * 200);
+    }
+    ctx.stroke();
+
+    if (scrapedImage.complete) {
+      ctx.globalAlpha = 0.4;
+      ctx.drawImage(scrapedImage, 700, 250, 400, 300);
+      ctx.globalAlpha = 1;
     }
 
-    function playBell(freq) {
-        const o = state.audio.ctx.createOscillator();
-        const g = state.audio.ctx.createGain();
-        o.type = 'triangle';
-        o.frequency.setValueAtTime(freq, state.audio.ctx.currentTime);
-        g.gain.setValueAtTime(0.1, state.audio.ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.0001, state.audio.ctx.currentTime + 3);
-        o.connect(g).connect(state.audio.dest);
-        o.connect(g).connect(state.audio.ctx.destination);
-        o.start(); o.stop(state.audio.ctx.currentTime + 3);
+  } else {
+
+    if (Math.random() > 0.98) {
+      playSting();
+      ctx.fillStyle = "#f00";
+      ctx.fillRect(0, 0, 1280, 720);
     }
 
-    function playJumpscare() {
-        const o = state.audio.ctx.createOscillator();
-        const g = state.audio.ctx.createGain();
-        o.type = 'sawtooth';
-        o.frequency.setValueAtTime(Math.random() * 100 + 40, state.audio.ctx.currentTime);
-        o.frequency.exponentialRampToValueAtTime(800, state.audio.ctx.currentTime + 0.1);
-        g.gain.setValueAtTime(0.4, state.audio.ctx.currentTime);
-        g.gain.linearRampToValueAtTime(0, state.audio.ctx.currentTime + 0.2);
-        o.connect(g).connect(state.audio.dest);
-        o.connect(g).connect(state.audio.ctx.destination);
-        o.start(); o.stop(state.audio.ctx.currentTime + 0.2);
-    }
+    drawFiend();
 
-    // --- VISUAL GENERATORS ---
-    function drawTreeOfLife(x, y, len, angle, depth) {
-        if (depth === 0) return;
-        ctx.beginPath();
-        ctx.save();
-        ctx.strokeStyle = `rgba(255,0,0,${depth * 0.1})`;
-        ctx.lineWidth = depth;
-        ctx.translate(x, y);
-        ctx.rotate(angle * Math.PI / 180);
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -len);
-        ctx.stroke();
-        drawTreeOfLife(0, -len, len * 0.8, angle - 25, depth - 1);
-        drawTreeOfLife(0, -len, len * 0.8, angle + 25, depth - 1);
-        ctx.restore();
-    }
+    ctx.fillStyle = "#fff";
+    ctx.font = "14px monospace";
+    ctx.fillText(
+      "0x" + Math.random().toString(16).slice(2, 10),
+      Math.random() * 1200,
+      Math.random() * 700
+    );
+  }
 
-    function drawTheFiend() {
-        const t = Date.now() * 0.005;
-        ctx.save();
-        ctx.translate(640 + Math.sin(t)*10, 360);
-        
-        // Mayan Mask Structure
-        ctx.fillStyle = "#111";
-        ctx.strokeStyle = "#333";
-        ctx.beginPath();
-        ctx.moveTo(-180, -220); ctx.lineTo(180, -220); ctx.lineTo(220, 100); ctx.lineTo(0, 320); ctx.lineTo(-220, 100);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (frame >= 2100) {
+    stopBroadcast();
+  } else {
+    requestAnimationFrame(render);
+  }
+}
 
-        // The Piercing Eyes
-        const flicker = Math.random() > 0.96 ? 1 : 0.5;
-        ctx.fillStyle = `rgba(255, 255, 255, ${flicker})`;
-        ctx.shadowBlur = 40 * flicker; ctx.shadowColor = "#fff";
-        ctx.fillRect(-100, -110, 60, 8);
-        ctx.fillRect(40, -110, 60, 8);
-        
-        ctx.restore();
-    }
+/* ===================== SYSTEM ===================== */
 
-    function render() {
-        if(!state.isRecording) return;
-        state.frame++;
+function startBroadcast() {
 
-        // Progress Tracking
-        const p = (state.frame / 2100) * 100;
-        fill.style.width = `${p}%`;
+  chunks = [];
+  frame = 0;
 
-        // Background
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0,0, canvas.width, canvas.height);
+  currentTheme = PSA_THEMES[Math.floor(Math.random() * PSA_THEMES.length)];
+  scrapedImage.src = "https://picsum.photos/800/600?grayscale&blur=3&random=" + Date.now();
 
-        if (state.frame % 500 < 350) {
-            // --- PSA MODE ---
-            ctx.fillStyle = state.theme.color;
-            ctx.fillRect(50, 50, 1180, 620);
-            
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 50px Courier New";
-            ctx.fillText("DEPARTMENT OF ETHEREAL SAFETY", 100, 150);
-            ctx.font = "30px Courier New";
-            ctx.fillText("> " + state.theme.msg, 100, 250);
-            
-            if(state.img.complete) {
-                ctx.globalAlpha = 0.3;
-                // Illogical Zoom
-                ctx.drawImage(state.img, 200, 200, 100, 100, 800, 300, 300, 300);
-                ctx.globalAlpha = 1.0;
-            }
-            drawTreeOfLife(1100, 650, 40, 0, 8);
-        } else {
-            // --- ENTITY MODE ---
-            if(Math.random() > 0.98) {
-                playJumpscare();
-                ctx.fillStyle = "#fff"; ctx.fillRect(0,0,1280,720);
-            }
-            drawTheFiend();
-            // Subliminal Overlays
-            ctx.fillStyle = "rgba(255,255,255,0.1)";
-            ctx.font = "12px monospace";
-            ctx.fillText("REDACTED: " + Math.random().toString(36), Math.random()*1280, Math.random()*720);
-        }
+  document.getElementById("overlay").style.display = "none";
+  document.getElementById("status-bar").style.display = "block";
 
-        // Glitch Logic
-        if(Math.random() > 0.95) {
-            ctx.drawImage(canvas, Math.random()*10, 0, 1280, 720, 0, 0, 1280, 720);
-        }
+  const audioStream = setupAudio();
+  const canvasStream = canvas.captureStream(60);
 
-        if(state.frame >= 2100) stopAll();
-        else requestAnimationFrame(render);
-    }
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...audioStream.getAudioTracks()
+  ]);
 
-    // --- CONTROLS ---
-    function stopAll() {
-        state.isRecording = false;
-        state.recorder.stop();
-        document.getElementById('boot-screen').style.display = 'flex';
-        document.getElementById('boot-screen').innerHTML = "<h1>SIGNAL CAPTURED</h1><p>The archive has been downloaded.</p>";
-    }
+  recorder = new MediaRecorder(combinedStream);
 
-    function start() {
-        state.theme = THEMES[Math.floor(Math.random() * THEMES.length)];
-        state.img.src = `https://picsum.photos/1280/720?grayscale&blur=2&t=${Date.now()}`;
-        
-        document.getElementById('boot-screen').style.display = 'none';
-        bar.style.display = 'block';
-        
-        initSound();
-        
-        // Muxing Audio and Video
-        const canvasStream = canvas.captureStream(60);
-        const combined = new MediaStream([
-            ...canvasStream.getVideoTracks(),
-            ...state.audio.dest.stream.getAudioTracks()
-        ]);
+  recorder.ondataavailable = e => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
 
-        state.recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp9,opus' });
-        state.recorder.ondataavailable = e => state.chunks.push(e.data);
-        state.recorder.onstop = () => {
-            const blob = new Blob(state.chunks, { type: 'video/webm' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `SEPHIROTH_SIGNAL_${Date.now()}.webm`;
-            a.click();
-        };
+  recorder.onstop = saveVideo;
 
-        state.recorder.start();
-        state.isRecording = true;
-        
-        // English Text-to-Speech
-        const u = new SpeechSynthesisUtterance(state.theme.voice);
-        u.lang = 'en-US'; u.pitch = 0.1; u.rate = 0.7;
-        window.speechSynthesis.speak(u);
-        
-        render();
-    }
+  recorder.start();
 
-    btn.addEventListener('click', start);
-})();
+  isRecording = true;
+  render();
+
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(currentTheme.voice);
+  utter.pitch = 0.4;
+  utter.rate = 0.75;
+  utter.lang = "en-US";
+  speechSynthesis.speak(utter);
+}
+
+function stopBroadcast() {
+  isRecording = false;
+  if (recorder && recorder.state !== "inactive") {
+    recorder.stop();
+  }
+}
+
+function saveVideo() {
+  const blob = new Blob(chunks, { type: "video/webm" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "SEPHIROTH_DECODED_" + Date.now() + ".webm";
+  a.click();
+
+  document.getElementById("overlay").style.display = "flex";
+  document.getElementById("overlay").innerHTML =
+    "<h1>SIGNAL RECOVERED</h1><p>Check your downloads folder.</p>";
+}
+
+startBtn.addEventListener("click", startBroadcast);
 </script>
+
 </body>
 </html>
+
