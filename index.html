@@ -2,259 +2,467 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>DEPARTMENT_OF_ETHEREAL_SAFETY // SEPHIROTH_V9</title>
+    <title>SEPHIROTH_V11 // OMNI_MIND</title>
     <style>
-        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; }
-        canvas { width: 100vw; height: 100vh; object-fit: contain; image-rendering: pixelated; }
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; cursor: none; }
         
-        #overlay { 
+        #stage { position: relative; width: 100vw; height: 100vh; background: #000; }
+        canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+
+        /* CRT / VHS OVERLAY LAYERS */
+        .scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 3px 100%;
+        }
+        
+        .vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 11;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,1) 100%);
+        }
+
+        /* UI OVERLAY */
+        #ui-layer { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; 
             background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; 
         }
-        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
-        #progress { position: absolute; bottom: 0; left: 0; height: 3px; background: #f00; width: 0%; transition: width 0.1s; }
+        
+        h1 { font-weight: 100; letter-spacing: 10px; color: #444; text-transform: uppercase; margin-bottom: 10px; }
+        p { color: #222; font-size: 12px; margin-bottom: 40px; }
 
         button { 
-            padding: 20px 60px; border: 1px solid #333; background: transparent; color: #555; 
-            letter-spacing: 10px; cursor: pointer; transition: 0.4s; font-size: 1.2rem;
+            padding: 20px 50px; border: 1px solid #333; background: transparent; color: #555; 
+            letter-spacing: 8px; cursor: pointer; transition: all 0.5s ease; font-family: 'Courier New', monospace;
         }
-        button:hover { border-color: #fff; color: #fff; box-shadow: 0 0 40px rgba(255,255,255,0.2); }
-        
-        .vhs {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
-            background-size: 100% 3px, 3px 100%; pointer-events: none;
+        button:hover { 
+            border-color: #f00; color: #fff; text-shadow: 0 0 10px #f00, 0 0 20px #f00; 
+            box-shadow: 0 0 30px rgba(255,0,0,0.2); 
         }
+
+        #progress { position: absolute; bottom: 0; left: 0; height: 4px; background: #f00; width: 0%; z-index: 200; transition: width 0.1s linear; }
     </style>
 </head>
 <body>
 
-<div id="overlay">
-    <h1 style="letter-spacing: 20px; font-weight: 100; color: #666;">SEPHIROTH_V9</h1>
-    <p style="font-size: 0.8rem; color: #333; margin-bottom: 50px;">SIGNAL_RECOVERY_IN_PROGRESS</p>
-    <button id="start">DECODE</button>
+<div id="ui-layer">
+    <h1 id="status-text">INITIALIZING BRAIN...</h1>
+    <p id="sub-status">[ AWAITING NEURAL HANDSHAKE ]</p>
+    <button id="start-btn" style="display:none;">CONNECT TO SIGNAL</button>
 </div>
 
-<div id="ui"><div class="vhs"></div><div id="progress"></div></div>
-<canvas id="c" width="1280" height="720"></canvas>
+<div id="stage">
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+    <div id="progress"></div>
+    <canvas id="render-canvas"></canvas>
+</div>
 
 <script>
 (function() {
     "use strict";
 
-    const canvas = document.getElementById("c");
-    const ctx = canvas.getContext("2d", { alpha: false });
-    const startBtn = document.getElementById("start");
-    const progress = document.getElementById("progress");
+    const canvas = document.getElementById("render-canvas");
+    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const uiTitle = document.getElementById("status-text");
+    const uiSub = document.getElementById("sub-status");
+    const startBtn = document.getElementById("start-btn");
+    const progressBar = document.getElementById("progress");
 
+    canvas.width = 1280;
+    canvas.height = 720;
+
+    // --- THE BRAIN: CORE STATE ---
     let state = {
-        active: false,
+        running: false,
         frame: 0,
-        maxFrames: 1800, // 30 seconds at 60fps
+        maxFrames: 2100, // ~35 seconds
+        anchor: null,
         theme: null,
-        scrapedImg: new Image(),
-        scrapedText: "",
+        scrapedText: "DATA_CORRUPTION",
+        images: [],
         recorder: null,
         chunks: [],
-        audio: { ctx: null, dest: null, nodes: [] }
+        audioCtx: null,
+        audioDest: null,
+        masterGain: null,
+        fiendSeed: Math.random() // Unique seed for the monster's face
     };
 
-    const DIRECTIVES = [
-        { id: "ROOT", keywords: "roots,veins,underground,soil", msg: "THE_ROOTS_ARE_HUNGRY", color: "#210" },
-        { id: "VOID", keywords: "statue,abandoned,void,eyes", msg: "DO_NOT_OBSERVE_THE_VOID", color: "#002" },
-        { id: "FLESH", keywords: "anatomy,meat,medical,teeth", msg: "FLESH_IS_A_TRANSMISSION", color: "#300" }
+    // --- 1. THE BRAIN ANCHORS (The Seed) ---
+    // Each anchor defines the vibe, color palette, and musical mode.
+    const ANCHORS = [
+        { 
+            keyword: "OSSIFICATION", 
+            palette: { bg: "#050505", text: "#e0d8c0", accent: "#5a4a30" }, 
+            music: { baseFreq: 40, mode: [0, 1, 4, 5, 7], tempo: 50 }, // Phrygian Dominant (Exotic/Dread)
+            fiend: { horns: 2, eyes: 2, jaw: "wide" }
+        },
+        { 
+            keyword: "LIQUEFACTION", 
+            palette: { bg: "#000508", text: "#aaccff", accent: "#003344" }, 
+            music: { baseFreq: 35, mode: [0, 3, 6, 9], tempo: 40 }, // Diminished (Unstable)
+            fiend: { horns: 0, eyes: 6, jaw: "narrow" }
+        },
+        { 
+            keyword: "HEMORRHAGE", 
+            palette: { bg: "#100000", text: "#ffcccc", accent: "#550000" }, 
+            music: { baseFreq: 45, mode: [0, 1, 3, 4, 6, 8], tempo: 140 }, // Locrian (Horror)
+            fiend: { horns: 4, eyes: 1, jaw: "split" }
+        },
+        { 
+            keyword: "ENTROPY", 
+            palette: { bg: "#080808", text: "#ffffff", accent: "#333333" }, 
+            music: { baseFreq: 30, mode: [0, 2, 6, 8], tempo: 200 }, // Whole Tone (Dreamlike/Confusing)
+            fiend: { horns: 10, eyes: 0, jaw: "missing" }
+        }
     ];
 
-    // --- SCRAPER ---
-    async function scrape() {
-        state.theme = DIRECTIVES[Math.floor(Math.random() * DIRECTIVES.length)];
-        const topics = ["Liminality", "Pareidolia", "Cryptid", "Eldritch_horror", "Number_station"];
-        const t = topics[Math.floor(Math.random() * topics.length)];
+    // --- 2. INITIALIZATION & SCRAPING ---
+    async function initBrain() {
+        // Pick a random anchor
+        state.theme = ANCHORS[Math.floor(Math.random() * ANCHORS.length)];
+        state.anchor = state.theme.keyword;
         
+        uiTitle.innerText = `ANCHOR: ${state.anchor}`;
+        uiSub.innerText = `[ PALETTE: ${state.theme.palette.accent} // MODE: ${state.theme.music.baseFreq}Hz ]`;
+
+        // Scrape Wikipedia
         try {
-            const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${t}`);
-            const d = await r.json();
-            state.scrapedText = d.extract || "CORRUPT_BUFFER_UNDEFINED";
-        } catch { state.scrapedText = "CONNECTION_LOST_TO_CENTRAL_ARCHIVE."; }
+            const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${state.anchor.toLowerCase()}`);
+            const data = await res.json();
+            state.scrapedText = data.extract || "REDACTED_BY_ADMIN";
+        } catch { 
+            state.scrapedText = "CONNECTION_LOST. THE_ARCHIVE_IS_EMPTY."; 
+        }
 
-        state.scrapedImg.crossOrigin = "anonymous";
-        state.scrapedImg.src = `https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=1280&q=80&sig=${Math.random()}`;
+        // Scrape Images (High Contrast/Abstract)
+        const queries = ["texture", "abstract", "decay", "industrial", "anatomy"];
+        for(let i=0; i<3; i++) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            // Random Sig prevents caching
+            const q = queries[Math.floor(Math.random()*queries.length)];
+            img.src = `https://picsum.photos/1280/720?grayscale&blur=2&random=${Math.random()}`;
+            state.images.push(img);
+        }
+
+        // Enable Start
+        setTimeout(() => {
+            startBtn.style.display = "block";
+            uiTitle.style.color = state.theme.palette.accent;
+            startBtn.innerText = `INITIATE ${state.anchor} PROTOCOL`;
+        }, 1500);
     }
 
-    // --- AUDIO SYNTH (Complex) ---
-    function initAudio() {
+    // --- 3. AUDIO ENGINE (Generative Modular Synth) ---
+    function setupAudio() {
         const AC = window.AudioContext || window.webkitAudioContext;
-        state.audio.ctx = new AC();
-        state.audio.dest = state.audio.ctx.createMediaStreamDestination();
+        state.audioCtx = new AC();
+        state.audioDest = state.audioCtx.createMediaStreamDestination();
+        state.masterGain = state.audioCtx.createGain();
+        state.masterGain.gain.value = 0.8;
+        state.masterGain.connect(state.audioDest);
+        state.masterGain.connect(state.audioCtx.destination);
 
-        const master = state.audio.ctx.createGain();
-        master.connect(state.audio.dest);
-        master.connect(state.audio.ctx.destination);
-
-        // 1. Industrial Heartbeat
-        const kick = state.audio.ctx.createOscillator();
-        const kickG = state.audio.ctx.createGain();
-        kick.frequency.setValueAtTime(50, 0);
-        kickG.gain.value = 0.2;
-        setInterval(() => {
-            kickG.gain.exponentialRampToValueAtTime(0.5, state.audio.ctx.currentTime + 0.01);
-            kickG.gain.exponentialRampToValueAtTime(0.001, state.audio.ctx.currentTime + 0.5);
-        }, 800);
-        kick.connect(kickG).connect(master);
-        kick.start();
-
-        // 2. FM Scream
-        const mod = state.audio.ctx.createOscillator();
-        const car = state.audio.ctx.createOscillator();
-        const modG = state.audio.ctx.createGain();
-        mod.frequency.value = 150;
-        modG.gain.value = 500;
-        car.frequency.value = 200;
-        mod.connect(modG);
-        modG.connect(car.frequency);
-        const carG = state.audio.ctx.createGain();
-        carG.gain.value = 0.02;
-        car.connect(carG).connect(master);
-        car.start(); mod.start();
-
-        // 3. Resonant Wind Noise
-        const bufferSize = 2 * state.audio.ctx.sampleRate;
-        const noiseBuffer = state.audio.ctx.createBuffer(1, bufferSize, state.audio.ctx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
-        const noise = state.audio.ctx.createBufferSource();
-        noise.buffer = noiseBuffer;
-        noise.loop = true;
-        const filter = state.audio.ctx.createBiquadFilter();
-        filter.type = "lowpass";
-        setInterval(() => {
-            filter.frequency.exponentialRampToValueAtTime(Math.random()*2000 + 100, state.audio.ctx.currentTime + 1);
-        }, 1000);
-        const nG = state.audio.ctx.createGain();
-        nG.gain.value = 0.05;
-        noise.connect(filter).connect(nG).connect(master);
-        noise.start();
-    }
-
-    // --- VISUAL ENGINE ---
-    function drawTree(x, y, len, angle, branchWidth) {
-        ctx.beginPath(); ctx.save();
-        ctx.strokeStyle = `rgba(255,0,0,${branchWidth * 0.15})`;
-        ctx.lineWidth = branchWidth;
-        ctx.translate(x, y); ctx.rotate(angle * Math.PI / 180);
-        ctx.moveTo(0, 0); ctx.lineTo(0, -len); ctx.stroke();
-        if (len < 8) { ctx.restore(); return; }
-        drawTree(0, -len, len * 0.75, angle - (20 + Math.sin(state.frame*0.02)*10), branchWidth * 0.7);
-        drawTree(0, -len, len * 0.75, angle + (20 + Math.cos(state.frame*0.02)*10), branchWidth * 0.7);
-        ctx.restore();
-    }
-
-    function drawFiend() {
-        ctx.save(); ctx.translate(640, 360);
-        const shake = Math.random() > 0.95 ? (Math.random()-0.5)*20 : 0;
-        ctx.translate(shake, shake);
-
-        // Body
-        ctx.fillStyle = "#0a0a0a"; ctx.strokeStyle = "#333";
-        ctx.beginPath();
-        ctx.moveTo(-160, -220); ctx.lineTo(160, -220); ctx.lineTo(200, 80); ctx.lineTo(0, 320); ctx.lineTo(-200, 80);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-
-        // Eyes
-        const glow = 0.5 + Math.sin(state.frame*0.1)*0.5;
-        ctx.fillStyle = `rgba(255, 255, 255, ${glow})`;
-        ctx.shadowBlur = 30 * glow; ctx.shadowColor = "#fff";
-        ctx.fillRect(-100, -120, 70, 6); ctx.fillRect(30, -120, 70, 6);
+        // 1. The Drone (Sub-Bass + Texture)
+        const drone = state.audioCtx.createOscillator();
+        const droneGain = state.audioCtx.createGain();
+        drone.frequency.value = state.theme.music.baseFreq;
+        drone.type = 'sawtooth';
         
+        // Lowpass filter to make it dark
+        const filter = state.audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 200;
+        
+        // LFO for the filter (Movement)
+        const lfo = state.audioCtx.createOscillator();
+        lfo.frequency.value = 0.1; // Slow breathing
+        const lfoGain = state.audioCtx.createGain();
+        lfoGain.gain.value = 100;
+        lfo.connect(lfoGain).connect(filter.frequency);
+        lfo.start();
+
+        droneGain.gain.value = 0.2;
+        drone.connect(filter).connect(droneGain).connect(state.masterGain);
+        drone.start();
+
+        // 2. The Sequencer (Melody based on Theme Mode)
+        const interval = 60000 / state.theme.music.tempo;
+        setInterval(() => {
+            if(!state.running) return;
+            if(Math.random() > 0.6) playNote();
+        }, interval);
+    }
+
+    function playNote() {
+        const osc = state.audioCtx.createOscillator();
+        const env = state.audioCtx.createGain();
+        
+        // Pick a note from the theme's scale
+        const noteIndex = state.theme.music.mode[Math.floor(Math.random() * state.theme.music.mode.length)];
+        const freq = state.theme.music.baseFreq * Math.pow(2, noteIndex / 12) * (Math.random() > 0.5 ? 2 : 4);
+        
+        osc.frequency.value = freq;
+        osc.type = Math.random() > 0.5 ? 'triangle' : 'sine';
+        
+        env.gain.setValueAtTime(0, state.audioCtx.currentTime);
+        env.gain.linearRampToValueAtTime(0.1, state.audioCtx.currentTime + 0.05); // Attack
+        env.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 1.5); // Decay
+        
+        // Stereo Panner for space
+        const panner = state.audioCtx.createStereoPanner();
+        panner.pan.value = Math.random() * 2 - 1;
+
+        osc.connect(env).connect(panner).connect(state.masterGain);
+        osc.start();
+        osc.stop(state.audioCtx.currentTime + 2);
+    }
+
+    function triggerGlitchAudio() {
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(Math.random()*500 + 100, state.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, state.audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, state.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, state.audioCtx.currentTime + 0.2);
+        osc.connect(gain).connect(state.masterGain);
+        osc.start(); osc.stop(state.audioCtx.currentTime + 0.2);
+    }
+
+    // --- 4. VISUAL ENGINE (The Fiend & The Tree) ---
+    
+    // Recursive Tree of Life (The "Roots")
+    function drawRoots(x, y, len, angle, depth) {
+        if(depth === 0) return;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle * Math.PI/180);
+        ctx.strokeStyle = state.theme.palette.accent;
+        ctx.lineWidth = depth * 0.5;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, -len); ctx.stroke();
+        
+        const sway = Math.sin(state.frame * 0.02) * 5;
+        drawRoots(0, -len, len*0.8, angle - 20 + sway, depth-1);
+        drawRoots(0, -len, len*0.8, angle + 20 + sway, depth-1);
         ctx.restore();
     }
 
-    function render() {
-        if (!state.active) return;
-        state.frame++;
-        progress.style.width = `${(state.frame / state.maxFrames) * 100}%`;
+    // Procedural Mayan Fiend
+    function drawFiend() {
+        const cx = 640;
+        const cy = 360;
+        const scale = 1 + Math.sin(state.frame * 0.05) * 0.05; // Breathing
+        
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+        
+        // Random Shake
+        if(Math.random() > 0.9) ctx.translate(Math.random()*10-5, Math.random()*10-5);
 
-        // Clear
-        ctx.fillStyle = "#000"; ctx.fillRect(0,0,1280,720);
-
-        if (state.frame % 600 < 450) {
-            // PSA PHASE
-            ctx.fillStyle = state.theme.color; ctx.fillRect(50, 50, 1180, 620);
-            ctx.fillStyle = "#fff"; ctx.font = "bold 40px Courier New";
-            ctx.fillText("DEPARTMENT OF ETHEREAL SAFETY", 100, 150);
-            ctx.font = "18px Courier New";
-            const textLines = state.scrapedText.match(/.{1,90}(\s|$)/g) || [];
-            textLines.slice(0, 12).forEach((l, i) => {
-                const content = Math.random() > 0.98 ? "██████████████" : l;
-                ctx.fillText(content, 100, 230 + (i * 25));
-            });
-
-            if (state.scrapedImg.complete) {
-                ctx.globalAlpha = 0.15;
-                ctx.drawImage(state.scrapedImg, 800, 350, 400, 300);
-                ctx.globalAlpha = 1.0;
-            }
-            drawTree(1150, 650, 45, 0, 6);
+        // Mask Base
+        ctx.fillStyle = "#111";
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        
+        // Jaw Shape based on Brain
+        if(state.theme.fiend.jaw === "wide") {
+            ctx.moveTo(-150, -200); ctx.lineTo(150, -200); ctx.lineTo(180, 100); ctx.lineTo(0, 250); ctx.lineTo(-180, 100);
+        } else if (state.theme.fiend.jaw === "narrow") {
+            ctx.moveTo(-120, -200); ctx.lineTo(120, -200); ctx.lineTo(50, 250); ctx.lineTo(-50, 250);
         } else {
-            // ENTITY PHASE
-            if (Math.random() > 0.98) {
-                ctx.fillStyle = "#fff"; ctx.fillRect(0,0,1280,720);
+             ctx.moveTo(-150, -200); ctx.lineTo(150, -200); ctx.lineTo(100, 100); ctx.lineTo(0, 0); ctx.lineTo(-100, 100);
+        }
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        // Horns
+        ctx.fillStyle = "#222";
+        for(let i=0; i<state.theme.fiend.horns; i++) {
+            const x = -150 + (i * (300/state.theme.fiend.horns));
+            ctx.fillRect(x, -250, 20, 50);
+        }
+
+        // Glowing Eyes
+        const blink = Math.random() > 0.95 ? 0 : 1;
+        ctx.fillStyle = "#fff";
+        ctx.shadowColor = "#fff";
+        ctx.shadowBlur = 20;
+        
+        if(state.theme.fiend.eyes > 0) {
+            for(let i=0; i<state.theme.fiend.eyes; i++) {
+                // Distribute eyes horizontally
+                const spacing = 100;
+                const offset = (i - (state.theme.fiend.eyes-1)/2) * 60;
+                ctx.fillRect(offset - 20, -50 * blink, 40, 10);
             }
-            drawFiend();
+        } else {
+            // No eyes = Text instead
+            ctx.font = "20px Courier New";
+            ctx.fillText("NO_VISION", -50, 0);
         }
 
-        // Glitch
-        if (Math.random() > 0.96) {
-            const h = Math.random() * 50;
-            const y = Math.random() * 720;
-            ctx.drawImage(canvas, 0, y, 1280, h, Math.random() * 40 - 20, y, 1280, h);
-        }
+        // Tree Etching on Forehead
+        ctx.shadowBlur = 0;
+        drawRoots(0, -100, 20, 0, 4);
 
-        if (state.frame < state.maxFrames) requestAnimationFrame(render);
-        else finish();
+        ctx.restore();
     }
 
-    async function start() {
-        document.getElementById("overlay").style.display = "none";
-        await scrape();
-        initAudio();
+    function applyGlitch() {
+        // RGB Split Effect
+        const shift = Math.random() * 10;
+        const imgData = ctx.getImageData(0,0,1280,720);
+        // This is CPU heavy, so we do a fake version by drawing the canvas over itself
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = "rgba(255,0,0,0.5)";
+        if(Math.random()>0.5) ctx.drawImage(canvas, shift, 0);
+        ctx.fillStyle = "rgba(0,0,255,0.5)";
+        if(Math.random()>0.5) ctx.drawImage(canvas, -shift, 0);
+        ctx.globalCompositeOperation = 'source-over';
+    }
 
+    // --- 5. RENDER LOOP ---
+    function render() {
+        if(!state.running) return;
+        state.frame++;
+        
+        // Progress Bar
+        const progress = (state.frame / state.maxFrames) * 100;
+        progressBar.style.width = `${progress}%`;
+
+        // Clear Screen
+        ctx.fillStyle = state.theme.palette.bg;
+        ctx.fillRect(0,0,1280,720);
+
+        // --- PHASE 1: THE PSA (Calm/Eerie) ---
+        if(state.frame % 600 < 400) {
+            // Background Elements
+            ctx.strokeStyle = "#222";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(50, 50, 1180, 620);
+            
+            // Text Layer
+            ctx.fillStyle = state.theme.palette.text;
+            ctx.font = "bold 60px Courier New";
+            ctx.fillText(`DIRECTIVE: ${state.anchor}`, 100, 150);
+            
+            ctx.font = "20px Courier New";
+            ctx.fillStyle = state.theme.palette.accent;
+            const lines = state.scrapedText.match(/.{1,60}(\s|$)/g) || ["DATA_MISSING"];
+            
+            // Typing effect
+            const maxLines = Math.min(lines.length, 12);
+            for(let i=0; i<maxLines; i++) {
+                // Random Redaction
+                let txt = lines[i];
+                if(Math.random() > 0.9) txt = txt.replace(/[a-z]/g, "█");
+                ctx.fillText(txt, 100, 240 + (i*30));
+            }
+
+            // Image Overlay (Zooming)
+            const activeImg = state.images[Math.floor(state.frame / 200) % 3];
+            if(activeImg && activeImg.complete) {
+                ctx.save();
+                ctx.globalAlpha = 0.15;
+                ctx.globalCompositeOperation = 'overlay';
+                const zoom = 1 + (state.frame % 200) * 0.002;
+                ctx.translate(640, 360);
+                ctx.scale(zoom, zoom);
+                ctx.drawImage(activeImg, -400, -300, 800, 600);
+                ctx.restore();
+            }
+
+            // Tree Logo in corner
+            drawRoots(1150, 650, 30, 0, 5);
+        } 
+        
+        // --- PHASE 2: THE FIEND (Horror) ---
+        else {
+            // Jumpscare Flash
+            if(state.frame % 600 === 401) {
+                 ctx.fillStyle = "#fff"; ctx.fillRect(0,0,1280,720);
+                 triggerGlitchAudio();
+            }
+            
+            drawFiend();
+            
+            // Subliminal Text
+            ctx.fillStyle = "#fff";
+            ctx.font = "100px Courier New";
+            if(Math.random() > 0.9) ctx.fillText(state.anchor, Math.random()*1000, Math.random()*700);
+        }
+
+        // Global Glitch Chance
+        if(Math.random() > 0.98) {
+            applyGlitch();
+            triggerGlitchAudio();
+        }
+
+        if(state.frame >= state.maxFrames) stop();
+        else requestAnimationFrame(render);
+    }
+
+    // --- 6. RECORDING & EXPORT ---
+    async function start() {
+        document.getElementById("ui-layer").style.display = "none";
+        setupAudio();
+        
         const stream = canvas.captureStream(60);
         const combined = new MediaStream([
             ...stream.getVideoTracks(),
-            ...state.audio.dest.stream.getAudioTracks()
+            ...state.audioDest.stream.getAudioTracks()
         ]);
 
-        // Fix freezing: Provide a timeslice and ensure the stream is active
-        state.recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp9,opus' });
-        state.recorder.ondataavailable = e => { if (e.data.size > 0) state.chunks.push(e.data); };
+        state.recorder = new MediaRecorder(combined, { 
+            mimeType: 'video/webm;codecs=vp9,opus',
+            videoBitsPerSecond: 5000000 // High Bitrate
+        });
+        
+        state.recorder.ondataavailable = e => state.chunks.push(e.data);
         state.recorder.onstop = save;
         
-        state.recorder.start(1000); // 1s slices
-        state.active = true;
-        render();
+        // Pump frames to prevent freezing
+        state.recorder.start(1000); 
+        state.running = true;
+        
+        // Voiceover
+        const utter = new SpeechSynthesisUtterance(`Protocol ${state.anchor} initiated. The roots are extending.`);
+        utter.pitch = 0.1; 
+        utter.rate = 0.8;
+        window.speechSynthesis.speak(utter);
 
-        const speak = new SpeechSynthesisUtterance("Warning. Broadcast session " + Math.floor(Math.random()*9000) + " has been initiated. Do not move during the cognitive recalibration phase.");
-        speak.lang = 'en-US'; speak.pitch = 0.1; speak.rate = 0.7;
-        window.speechSynthesis.speak(speak);
+        render();
     }
 
-    function finish() {
-        state.active = false;
+    function stop() {
+        state.running = false;
         state.recorder.stop();
     }
 
     function save() {
         const blob = new Blob(state.chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `SEPHIROTH_SIGNAL_${Date.now()}.webm`;
+        a.href = url;
+        a.download = `SEPHIROTH_${state.anchor}_${Date.now()}.webm`;
         a.click();
-        setTimeout(() => window.location.reload(), 1000);
+        
+        // Reset UI
+        uiTitle.innerText = "BROADCAST COMPLETE";
+        uiSub.innerText = "FILE DOWNLOADED. REFRESH TO PURGE MEMORY.";
+        document.getElementById("ui-layer").style.display = "flex";
     }
 
+    // Boot
+    initBrain();
     startBtn.addEventListener("click", start);
+
 })();
 </script>
 </body>
