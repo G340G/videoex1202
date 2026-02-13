@@ -2,69 +2,66 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SEPHIROTH_V11 // OMNI_MIND</title>
+    <title>SEPHIROTH_V12 // DISSONANCE_PSA</title>
     <style>
-        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; cursor: none; }
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Helvetica', 'Arial', sans-serif; cursor: none; }
         
-        #stage { position: relative; width: 100vw; height: 100vh; background: #000; }
-        canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+        #viewport { position: relative; width: 100vw; height: 100vh; background: #000; }
+        canvas { width: 100%; height: 100%; object-fit: contain; }
 
-        /* CRT / VHS OVERLAY LAYERS */
+        /* VHS OVERLAYS */
         .scanlines {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 3px, 3px 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
         }
-        
-        .vignette {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 11;
-            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,1) 100%);
+        .tracking {
+            position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: rgba(255,255,255,0.1);
+            z-index: 11; animation: track 5s infinite linear; opacity: 0.5; pointer-events: none;
         }
 
-        /* UI OVERLAY */
+        /* UI */
         #ui-layer { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; 
-            background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            background: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff;
         }
+        h1 { letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; color: #f0f0f0; }
+        p { font-family: 'Courier New'; color: #888; font-size: 12px; }
         
-        h1 { font-weight: 100; letter-spacing: 10px; color: #444; text-transform: uppercase; margin-bottom: 10px; }
-        p { color: #222; font-size: 12px; margin-bottom: 40px; }
-
         button { 
-            padding: 20px 50px; border: 1px solid #333; background: transparent; color: #555; 
-            letter-spacing: 8px; cursor: pointer; transition: all 0.5s ease; font-family: 'Courier New', monospace;
+            margin-top: 30px; padding: 20px 60px; border: 2px solid #fff; background: #000; color: #fff; 
+            font-weight: bold; letter-spacing: 2px; cursor: pointer; transition: 0.2s; text-transform: uppercase;
         }
-        button:hover { 
-            border-color: #f00; color: #fff; text-shadow: 0 0 10px #f00, 0 0 20px #f00; 
-            box-shadow: 0 0 30px rgba(255,0,0,0.2); 
-        }
+        button:hover { background: #fff; color: #000; }
+        button:disabled { border-color: #333; color: #333; cursor: wait; }
 
-        #progress { position: absolute; bottom: 0; left: 0; height: 4px; background: #f00; width: 0%; z-index: 200; transition: width 0.1s linear; }
+        #progress { position: absolute; bottom: 0; left: 0; height: 5px; background: #f00; width: 0%; z-index: 200; }
+
+        @keyframes track { 0% { top: -10%; opacity: 0; } 50% { opacity: 0.5; } 100% { top: 110%; opacity: 0; } }
     </style>
 </head>
 <body>
 
 <div id="ui-layer">
-    <h1 id="status-text">INITIALIZING BRAIN...</h1>
-    <p id="sub-status">[ AWAITING NEURAL HANDSHAKE ]</p>
-    <button id="start-btn" style="display:none;">CONNECT TO SIGNAL</button>
+    <h1 id="status">INITIALIZING SYSTEM...</h1>
+    <p id="sub-status">[ LOADING ASSETS ]</p>
+    <button id="start-btn" disabled>PLEASE WAIT</button>
 </div>
 
-<div id="stage">
+<div id="viewport">
     <div class="scanlines"></div>
-    <div class="vignette"></div>
+    <div class="tracking"></div>
     <div id="progress"></div>
-    <canvas id="render-canvas"></canvas>
+    <canvas id="c"></canvas>
 </div>
 
 <script>
 (function() {
     "use strict";
 
-    const canvas = document.getElementById("render-canvas");
-    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    const uiTitle = document.getElementById("status-text");
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const uiTitle = document.getElementById("status");
     const uiSub = document.getElementById("sub-status");
     const startBtn = document.getElementById("start-btn");
     const progressBar = document.getElementById("progress");
@@ -72,346 +69,279 @@
     canvas.width = 1280;
     canvas.height = 720;
 
-    // --- THE BRAIN: CORE STATE ---
+    // --- 1. THE BRAIN (Dual Narrative) ---
+    const TRIVIAL_TOPICS = [
+        { title: "DENTAL HYGIENE", tips: ["Brush twice daily", "Floss between molars", "Rinse with fluoride", "Smile confidently"] },
+        { title: "LAWN MAINTENANCE", tips: ["Aerate the soil", "Fertilize in spring", "Remove weeds", "Water at dawn"] },
+        { title: "POSTURE CHECK", tips: ["Straighten your spine", "Relax your shoulders", "Feet flat on floor", "Align the neck"] }
+    ];
+
+    const HORROR_THEMES = [
+        { name: "THE_ROOTS", msg: "THE SOIL IS FULL OF TEETH", missing: "LAST SEEN: DIGGING", visual: "organic" },
+        { name: "THE_SIGNAL", msg: "DO NOT ANSWER THE PHONE", missing: "LAST SEEN: SCREAMING", visual: "static" },
+        { name: "THE_HIVE", msg: "SKIN IS A CONTAINER", missing: "LAST SEEN: MOLTING", visual: "flesh" }
+    ];
+
     let state = {
-        running: false,
         frame: 0,
-        maxFrames: 2100, // ~35 seconds
-        anchor: null,
-        theme: null,
-        scrapedText: "DATA_CORRUPTION",
+        maxFrames: 2100, // 35 seconds
+        trivial: null,
+        horror: null,
         images: [],
         recorder: null,
         chunks: [],
         audioCtx: null,
         audioDest: null,
         masterGain: null,
-        fiendSeed: Math.random() // Unique seed for the monster's face
+        running: false
     };
 
-    // --- 1. THE BRAIN ANCHORS (The Seed) ---
-    // Each anchor defines the vibe, color palette, and musical mode.
-    const ANCHORS = [
-        { 
-            keyword: "OSSIFICATION", 
-            palette: { bg: "#050505", text: "#e0d8c0", accent: "#5a4a30" }, 
-            music: { baseFreq: 40, mode: [0, 1, 4, 5, 7], tempo: 50 }, // Phrygian Dominant (Exotic/Dread)
-            fiend: { horns: 2, eyes: 2, jaw: "wide" }
-        },
-        { 
-            keyword: "LIQUEFACTION", 
-            palette: { bg: "#000508", text: "#aaccff", accent: "#003344" }, 
-            music: { baseFreq: 35, mode: [0, 3, 6, 9], tempo: 40 }, // Diminished (Unstable)
-            fiend: { horns: 0, eyes: 6, jaw: "narrow" }
-        },
-        { 
-            keyword: "HEMORRHAGE", 
-            palette: { bg: "#100000", text: "#ffcccc", accent: "#550000" }, 
-            music: { baseFreq: 45, mode: [0, 1, 3, 4, 6, 8], tempo: 140 }, // Locrian (Horror)
-            fiend: { horns: 4, eyes: 1, jaw: "split" }
-        },
-        { 
-            keyword: "ENTROPY", 
-            palette: { bg: "#080808", text: "#ffffff", accent: "#333333" }, 
-            music: { baseFreq: 30, mode: [0, 2, 6, 8], tempo: 200 }, // Whole Tone (Dreamlike/Confusing)
-            fiend: { horns: 10, eyes: 0, jaw: "missing" }
-        }
-    ];
-
-    // --- 2. INITIALIZATION & SCRAPING ---
-    async function initBrain() {
-        // Pick a random anchor
-        state.theme = ANCHORS[Math.floor(Math.random() * ANCHORS.length)];
-        state.anchor = state.theme.keyword;
+    // --- 2. ASSET LOADER (Fixing the Image Issue) ---
+    async function loadAssets() {
+        state.trivial = TRIVIAL_TOPICS[Math.floor(Math.random() * TRIVIAL_TOPICS.length)];
+        state.horror = HORROR_THEMES[Math.floor(Math.random() * HORROR_THEMES.length)];
         
-        uiTitle.innerText = `ANCHOR: ${state.anchor}`;
-        uiSub.innerText = `[ PALETTE: ${state.theme.palette.accent} // MODE: ${state.theme.music.baseFreq}Hz ]`;
+        uiTitle.innerText = `PSA: ${state.trivial.title}`;
+        
+        const seeds = [100, 200, 300, 400].map(n => Math.floor(Math.random() * 1000));
+        const urls = [
+            `https://picsum.photos/seed/${seeds[0]}/1280/720?grayscale`, // Trivial BG
+            `https://picsum.photos/seed/${seeds[1]}/800/800?grayscale&blur=2`, // Missing Person
+            `https://picsum.photos/seed/${seeds[2]}/1280/720?grayscale&contrast=2` // Horror Texture
+        ];
 
-        // Scrape Wikipedia
-        try {
-            const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${state.anchor.toLowerCase()}`);
-            const data = await res.json();
-            state.scrapedText = data.extract || "REDACTED_BY_ADMIN";
-        } catch { 
-            state.scrapedText = "CONNECTION_LOST. THE_ARCHIVE_IS_EMPTY."; 
-        }
-
-        // Scrape Images (High Contrast/Abstract)
-        const queries = ["texture", "abstract", "decay", "industrial", "anatomy"];
-        for(let i=0; i<3; i++) {
+        let loaded = 0;
+        for (let url of urls) {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            // Random Sig prevents caching
-            const q = queries[Math.floor(Math.random()*queries.length)];
-            img.src = `https://picsum.photos/1280/720?grayscale&blur=2&random=${Math.random()}`;
-            state.images.push(img);
+            img.src = url;
+            img.onload = () => {
+                loaded++;
+                state.images.push(img);
+                if(loaded === urls.length) enableStart();
+            };
         }
-
-        // Enable Start
-        setTimeout(() => {
-            startBtn.style.display = "block";
-            uiTitle.style.color = state.theme.palette.accent;
-            startBtn.innerText = `INITIATE ${state.anchor} PROTOCOL`;
-        }, 1500);
     }
 
-    // --- 3. AUDIO ENGINE (Generative Modular Synth) ---
-    function setupAudio() {
+    function enableStart() {
+        uiTitle.innerText = "BROADCAST READY";
+        uiSub.innerText = `[ SCENARIO: ${state.trivial.title} // INTERFERENCE: ${state.horror.name} ]`;
+        startBtn.disabled = false;
+        startBtn.innerText = "INITIATE PSA";
+    }
+
+    // --- 3. AUDIO ENGINE (Corporate to Chaos) ---
+    function initAudio() {
         const AC = window.AudioContext || window.webkitAudioContext;
         state.audioCtx = new AC();
         state.audioDest = state.audioCtx.createMediaStreamDestination();
         state.masterGain = state.audioCtx.createGain();
-        state.masterGain.gain.value = 0.8;
+        state.masterGain.gain.value = 0.5;
         state.masterGain.connect(state.audioDest);
-        state.masterGain.connect(state.audioCtx.destination);
+        state.masterGain.connect(state.audioCtx.destination); // Monitor
 
-        // 1. The Drone (Sub-Bass + Texture)
-        const drone = state.audioCtx.createOscillator();
-        const droneGain = state.audioCtx.createGain();
-        drone.frequency.value = state.theme.music.baseFreq;
-        drone.type = 'sawtooth';
+        // 1. Corporate Jingle (Arpeggiator)
+        const arp = state.audioCtx.createOscillator();
+        const arpGain = state.audioCtx.createGain();
+        arp.type = 'sine';
+        arp.connect(arpGain).connect(state.masterGain);
+        arp.start();
         
-        // Lowpass filter to make it dark
-        const filter = state.audioCtx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 200;
+        // Music Logic Loop
+        let noteIdx = 0;
+        const majorScale = [261.63, 329.63, 392.00, 523.25]; // C Major
+        const dissonantScale = [240, 245, 255, 100]; // Unsettling
         
-        // LFO for the filter (Movement)
-        const lfo = state.audioCtx.createOscillator();
-        lfo.frequency.value = 0.1; // Slow breathing
-        const lfoGain = state.audioCtx.createGain();
-        lfoGain.gain.value = 100;
-        lfo.connect(lfoGain).connect(filter.frequency);
-        lfo.start();
-
-        droneGain.gain.value = 0.2;
-        drone.connect(filter).connect(droneGain).connect(state.masterGain);
-        drone.start();
-
-        // 2. The Sequencer (Melody based on Theme Mode)
-        const interval = 60000 / state.theme.music.tempo;
         setInterval(() => {
-            if(!state.running) return;
-            if(Math.random() > 0.6) playNote();
-        }, interval);
+            if(!state.running) { arpGain.gain.value = 0; return; }
+            
+            // Morph from happy to scary based on timeline
+            const progress = state.frame / state.maxFrames;
+            const isScary = progress > 0.3 || (state.frame % 400 > 300);
+            
+            const scale = isScary ? dissonantScale : majorScale;
+            const freq = scale[noteIdx % scale.length];
+            
+            // Detune heavily if scary
+            const detune = isScary ? (Math.random()*50 - 25) : 0;
+            
+            arp.frequency.setValueAtTime(freq + detune, state.audioCtx.currentTime);
+            arpGain.gain.setValueAtTime(isScary ? 0.3 : 0.1, state.audioCtx.currentTime);
+            arpGain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 0.5);
+            
+            noteIdx++;
+        }, 250);
+
+        // 2. The Drone (40Hz Fear Freq)
+        const drone = state.audioCtx.createOscillator();
+        const dGain = state.audioCtx.createGain();
+        drone.frequency.value = 40;
+        dGain.gain.value = 0.2;
+        drone.connect(dGain).connect(state.masterGain);
+        drone.start();
     }
 
-    function playNote() {
+    function playJumpscare() {
         const osc = state.audioCtx.createOscillator();
-        const env = state.audioCtx.createGain();
-        
-        // Pick a note from the theme's scale
-        const noteIndex = state.theme.music.mode[Math.floor(Math.random() * state.theme.music.mode.length)];
-        const freq = state.theme.music.baseFreq * Math.pow(2, noteIndex / 12) * (Math.random() > 0.5 ? 2 : 4);
-        
-        osc.frequency.value = freq;
-        osc.type = Math.random() > 0.5 ? 'triangle' : 'sine';
-        
-        env.gain.setValueAtTime(0, state.audioCtx.currentTime);
-        env.gain.linearRampToValueAtTime(0.1, state.audioCtx.currentTime + 0.05); // Attack
-        env.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 1.5); // Decay
-        
-        // Stereo Panner for space
-        const panner = state.audioCtx.createStereoPanner();
-        panner.pan.value = Math.random() * 2 - 1;
-
-        osc.connect(env).connect(panner).connect(state.masterGain);
-        osc.start();
-        osc.stop(state.audioCtx.currentTime + 2);
+        const g = state.audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, state.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(3000, state.audioCtx.currentTime + 0.1);
+        g.gain.setValueAtTime(0.8, state.audioCtx.currentTime);
+        g.gain.linearRampToValueAtTime(0, state.audioCtx.currentTime + 0.3);
+        osc.connect(g).connect(state.masterGain);
+        osc.start(); osc.stop(state.audioCtx.currentTime + 0.4);
     }
 
-    function triggerGlitchAudio() {
-        const osc = state.audioCtx.createOscillator();
-        const gain = state.audioCtx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(Math.random()*500 + 100, state.audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(50, state.audioCtx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.3, state.audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, state.audioCtx.currentTime + 0.2);
-        osc.connect(gain).connect(state.masterGain);
-        osc.start(); osc.stop(state.audioCtx.currentTime + 0.2);
-    }
-
-    // --- 4. VISUAL ENGINE (The Fiend & The Tree) ---
+    // --- 4. VISUAL ENGINE (The PSA) ---
     
-    // Recursive Tree of Life (The "Roots")
-    function drawRoots(x, y, len, angle, depth) {
+    // Recursive Tree (The Brand Logo)
+    function drawTree(x, y, len, angle, depth, color) {
         if(depth === 0) return;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle * Math.PI/180);
-        ctx.strokeStyle = state.theme.palette.accent;
-        ctx.lineWidth = depth * 0.5;
-        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = depth;
         ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, -len); ctx.stroke();
-        
-        const sway = Math.sin(state.frame * 0.02) * 5;
-        drawRoots(0, -len, len*0.8, angle - 20 + sway, depth-1);
-        drawRoots(0, -len, len*0.8, angle + 20 + sway, depth-1);
+        drawTree(0, -len, len*0.7, angle - 25, depth-1, color);
+        drawTree(0, -len, len*0.7, angle + 25, depth-1, color);
         ctx.restore();
     }
 
-    // Procedural Mayan Fiend
-    function drawFiend() {
-        const cx = 640;
-        const cy = 360;
-        const scale = 1 + Math.sin(state.frame * 0.05) * 0.05; // Breathing
-        
+    // Procedural Face (The Missing Person / Fiend)
+    function drawFace(x, y, type) {
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.scale(scale, scale);
+        ctx.translate(x, y);
         
-        // Random Shake
-        if(Math.random() > 0.9) ctx.translate(Math.random()*10-5, Math.random()*10-5);
-
-        // Mask Base
-        ctx.fillStyle = "#111";
-        ctx.strokeStyle = "#333";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
+        // Base Head
+        ctx.fillStyle = type === 'normal' ? "#ccc" : "#111";
+        ctx.beginPath(); ctx.arc(0, 0, 100, 0, Math.PI*2); ctx.fill();
         
-        // Jaw Shape based on Brain
-        if(state.theme.fiend.jaw === "wide") {
-            ctx.moveTo(-150, -200); ctx.lineTo(150, -200); ctx.lineTo(180, 100); ctx.lineTo(0, 250); ctx.lineTo(-180, 100);
-        } else if (state.theme.fiend.jaw === "narrow") {
-            ctx.moveTo(-120, -200); ctx.lineTo(120, -200); ctx.lineTo(50, 250); ctx.lineTo(-50, 250);
+        // Features
+        ctx.fillStyle = type === 'normal' ? "#000" : "#fff";
+        
+        if (type === 'normal') {
+            // Generic Face
+            ctx.fillRect(-40, -20, 20, 10); // L Eye
+            ctx.fillRect(20, -20, 20, 10);  // R Eye
+            ctx.fillRect(-30, 40, 60, 5);   // Mouth
         } else {
-             ctx.moveTo(-150, -200); ctx.lineTo(150, -200); ctx.lineTo(100, 100); ctx.lineTo(0, 0); ctx.lineTo(-100, 100);
+            // The Fiend
+            const shake = Math.random()*10;
+            ctx.fillRect(-50+shake, -30, 100, 20); // Hollow eyes
+            // Vertical Mouth
+            ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 80); ctx.strokeStyle="#fff"; ctx.lineWidth=5; ctx.stroke();
+            
+            // Tree Etched on Face
+            drawTree(0, -60, 20, 0, 3, "#f00");
         }
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-
-        // Horns
-        ctx.fillStyle = "#222";
-        for(let i=0; i<state.theme.fiend.horns; i++) {
-            const x = -150 + (i * (300/state.theme.fiend.horns));
-            ctx.fillRect(x, -250, 20, 50);
-        }
-
-        // Glowing Eyes
-        const blink = Math.random() > 0.95 ? 0 : 1;
-        ctx.fillStyle = "#fff";
-        ctx.shadowColor = "#fff";
-        ctx.shadowBlur = 20;
-        
-        if(state.theme.fiend.eyes > 0) {
-            for(let i=0; i<state.theme.fiend.eyes; i++) {
-                // Distribute eyes horizontally
-                const spacing = 100;
-                const offset = (i - (state.theme.fiend.eyes-1)/2) * 60;
-                ctx.fillRect(offset - 20, -50 * blink, 40, 10);
-            }
-        } else {
-            // No eyes = Text instead
-            ctx.font = "20px Courier New";
-            ctx.fillText("NO_VISION", -50, 0);
-        }
-
-        // Tree Etching on Forehead
-        ctx.shadowBlur = 0;
-        drawRoots(0, -100, 20, 0, 4);
-
         ctx.restore();
     }
 
-    function applyGlitch() {
-        // RGB Split Effect
-        const shift = Math.random() * 10;
-        const imgData = ctx.getImageData(0,0,1280,720);
-        // This is CPU heavy, so we do a fake version by drawing the canvas over itself
-        ctx.globalCompositeOperation = 'screen';
-        ctx.fillStyle = "rgba(255,0,0,0.5)";
-        if(Math.random()>0.5) ctx.drawImage(canvas, shift, 0);
-        ctx.fillStyle = "rgba(0,0,255,0.5)";
-        if(Math.random()>0.5) ctx.drawImage(canvas, -shift, 0);
-        ctx.globalCompositeOperation = 'source-over';
-    }
-
-    // --- 5. RENDER LOOP ---
     function render() {
-        if(!state.running) return;
+        if (!state.running) return;
         state.frame++;
         
-        // Progress Bar
-        const progress = (state.frame / state.maxFrames) * 100;
-        progressBar.style.width = `${progress}%`;
+        const progress = state.frame / state.maxFrames;
+        progressBar.style.width = `${progress * 100}%`;
 
-        // Clear Screen
-        ctx.fillStyle = state.theme.palette.bg;
+        // SCENE CONTROLLER
+        const cycle = state.frame % 600; // 10 second loops
+        let mode = 'TRIVIAL';
+        if (cycle > 300) mode = 'MISSING';
+        if (cycle > 550 || Math.random() > 0.98) mode = 'GLITCH';
+        if (progress > 0.8) mode = 'ENDGAME';
+
+        // 1. BACKGROUND
+        ctx.fillStyle = (mode === 'TRIVIAL') ? "#000080" : "#000"; // Corporate Blue vs Black
         ctx.fillRect(0,0,1280,720);
 
-        // --- PHASE 1: THE PSA (Calm/Eerie) ---
-        if(state.frame % 600 < 400) {
-            // Background Elements
-            ctx.strokeStyle = "#222";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(50, 50, 1180, 620);
+        if (mode === 'TRIVIAL') {
+            // --- CORPORATE SLIDE ---
+            if(state.images[0]) {
+                ctx.globalAlpha = 0.2;
+                ctx.drawImage(state.images[0], 0, 0, 1280, 720);
+                ctx.globalAlpha = 1.0;
+            }
             
-            // Text Layer
-            ctx.fillStyle = state.theme.palette.text;
-            ctx.font = "bold 60px Courier New";
-            ctx.fillText(`DIRECTIVE: ${state.anchor}`, 100, 150);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 60px Helvetica";
+            ctx.textAlign = "center";
+            ctx.fillText(state.trivial.title, 640, 100);
             
-            ctx.font = "20px Courier New";
-            ctx.fillStyle = state.theme.palette.accent;
-            const lines = state.scrapedText.match(/.{1,60}(\s|$)/g) || ["DATA_MISSING"];
+            ctx.font = "30px Helvetica";
+            ctx.textAlign = "left";
+            state.trivial.tips.forEach((tip, i) => {
+                ctx.fillText(`• ${tip}`, 200, 250 + (i*60));
+            });
             
-            // Typing effect
-            const maxLines = Math.min(lines.length, 12);
-            for(let i=0; i<maxLines; i++) {
-                // Random Redaction
-                let txt = lines[i];
-                if(Math.random() > 0.9) txt = txt.replace(/[a-z]/g, "█");
-                ctx.fillText(txt, 100, 240 + (i*30));
+            // Logo
+            drawTree(1100, 650, 40, 0, 5, "#fff");
+            
+        } else if (mode === 'MISSING') {
+            // --- MISSING PERSON POSTER ---
+            ctx.fillStyle = "#f00"; // Alert Red Background
+            ctx.fillRect(50, 50, 1180, 620);
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(60, 60, 1160, 600); // White Paper
+
+            ctx.fillStyle = "#000";
+            ctx.font = "bold 100px Helvetica";
+            ctx.textAlign = "center";
+            ctx.fillText("MISSING", 640, 180);
+
+            // The Photo
+            if(state.images[1]) {
+                ctx.drawImage(state.images[1], 440, 220, 400, 400);
+            } else {
+                drawFace(640, 420, 'normal');
             }
 
-            // Image Overlay (Zooming)
-            const activeImg = state.images[Math.floor(state.frame / 200) % 3];
-            if(activeImg && activeImg.complete) {
-                ctx.save();
-                ctx.globalAlpha = 0.15;
-                ctx.globalCompositeOperation = 'overlay';
-                const zoom = 1 + (state.frame % 200) * 0.002;
-                ctx.translate(640, 360);
-                ctx.scale(zoom, zoom);
-                ctx.drawImage(activeImg, -400, -300, 800, 600);
-                ctx.restore();
-            }
+            ctx.font = "bold 40px Courier New";
+            ctx.fillText(state.horror.missing, 640, 600);
 
-            // Tree Logo in corner
-            drawRoots(1150, 650, 30, 0, 5);
-        } 
-        
-        // --- PHASE 2: THE FIEND (Horror) ---
-        else {
-            // Jumpscare Flash
-            if(state.frame % 600 === 401) {
-                 ctx.fillStyle = "#fff"; ctx.fillRect(0,0,1280,720);
-                 triggerGlitchAudio();
+        } else if (mode === 'GLITCH' || mode === 'ENDGAME') {
+            // --- THE BREAKDOWN ---
+            if(state.frame % 5 === 0) {
+                 ctx.fillStyle = Math.random() > 0.5 ? "#fff" : "#000";
+                 ctx.fillRect(0,0,1280,720);
             }
             
-            drawFiend();
+            // Datamoshing effect (draw previous frame with offset)
+            ctx.drawImage(canvas, Math.random()*20-10, Math.random()*20-10);
             
-            // Subliminal Text
+            // The Fiend
+            drawFace(640, 360, 'fiend');
+            
             ctx.fillStyle = "#fff";
             ctx.font = "100px Courier New";
-            if(Math.random() > 0.9) ctx.fillText(state.anchor, Math.random()*1000, Math.random()*700);
+            ctx.textAlign = "center";
+            ctx.fillText(state.horror.msg, 640, 360);
+            
+            if(mode === 'GLITCH' && Math.random() > 0.8) playJumpscare();
         }
 
-        // Global Glitch Chance
-        if(Math.random() > 0.98) {
-            applyGlitch();
-            triggerGlitchAudio();
+        // 2. GLOBAL CHAOS LAYER
+        // RGB Split
+        if (Math.random() > 0.95) {
+            const split = 10;
+            ctx.globalCompositeOperation = 'screen';
+            ctx.drawImage(canvas, split, 0);
+            ctx.globalCompositeOperation = 'source-over';
         }
 
-        if(state.frame >= state.maxFrames) stop();
-        else requestAnimationFrame(render);
+        if (state.frame < state.maxFrames) {
+            requestAnimationFrame(render);
+        } else {
+            stop();
+        }
     }
 
-    // --- 6. RECORDING & EXPORT ---
+    // --- 5. CONTROL ---
     async function start() {
         document.getElementById("ui-layer").style.display = "none";
-        setupAudio();
+        initAudio();
         
         const stream = canvas.captureStream(60);
         const combined = new MediaStream([
@@ -421,20 +351,17 @@
 
         state.recorder = new MediaRecorder(combined, { 
             mimeType: 'video/webm;codecs=vp9,opus',
-            videoBitsPerSecond: 5000000 // High Bitrate
+            videoBitsPerSecond: 5000000 
         });
         
         state.recorder.ondataavailable = e => state.chunks.push(e.data);
         state.recorder.onstop = save;
-        
-        // Pump frames to prevent freezing
         state.recorder.start(1000); 
         state.running = true;
-        
+
         // Voiceover
-        const utter = new SpeechSynthesisUtterance(`Protocol ${state.anchor} initiated. The roots are extending.`);
-        utter.pitch = 0.1; 
-        utter.rate = 0.8;
+        const utter = new SpeechSynthesisUtterance("Attention. The following is a public service announcement regarding... " + state.trivial.title);
+        utter.lang = 'en-US'; utter.rate = 0.9;
         window.speechSynthesis.speak(utter);
 
         render();
@@ -443,6 +370,10 @@
     function stop() {
         state.running = false;
         state.recorder.stop();
+        // Scary ending voice
+        const utter = new SpeechSynthesisUtterance("They are in the " + state.horror.visual);
+        utter.lang = 'en-US'; utter.pitch = 0.1; utter.rate = 0.5;
+        window.speechSynthesis.speak(utter);
     }
 
     function save() {
@@ -450,17 +381,17 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `SEPHIROTH_${state.anchor}_${Date.now()}.webm`;
+        a.download = `PSA_${state.trivial.title.replace(/\s/g,'_')}.webm`;
         a.click();
         
-        // Reset UI
-        uiTitle.innerText = "BROADCAST COMPLETE";
-        uiSub.innerText = "FILE DOWNLOADED. REFRESH TO PURGE MEMORY.";
+        uiTitle.innerText = "BROADCAST ENDED";
+        uiSub.innerText = "CHECK DOWNLOADS FOLDER";
         document.getElementById("ui-layer").style.display = "flex";
+        startBtn.style.display = "none";
     }
 
     // Boot
-    initBrain();
+    loadAssets();
     startBtn.addEventListener("click", start);
 
 })();
