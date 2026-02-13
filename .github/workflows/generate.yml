@@ -1,4 +1,4 @@
-name: SEPHIROTH V10 Autonomous Signal Generator
+name: SEPHIROTH V10 Autonomous Signal
 
 on:
   workflow_dispatch:
@@ -9,25 +9,19 @@ jobs:
 
     steps:
 
-    - name: Checkout repo
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install ffmpeg
+    - name: Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y ffmpeg espeak
 
-    - name: Install Python deps
+    - name: Install Python dependencies
       run: |
         pip install -r requirements.txt
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y ffmpeg espeak
-        pip install -r requirements.txt
-
-    - name: Generate signal
+    - name: Run SEPHIROTH
       run: |
         python sephiroth_v10_autonomous_signal.py
 
@@ -36,3 +30,4 @@ jobs:
       with:
         name: SEPHIROTH_SIGNAL
         path: SEPHIROTH_V10_*.mov
+
