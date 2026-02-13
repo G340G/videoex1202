@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-SEPHIROTH V10 — AUTONOMOUS SIGNAL SYSTEM
-GitHub-Optimized Edition
-NO pyttsx3
-Uses espeak directly
-Guaranteed audio mux
-Fully chaotic analog corruption
+SEPHIROTH V10 LO-FI EDITION
+GitHub optimized
+Small file size
+Full features preserved
+Analog horror aesthetic
 """
 
 import os
@@ -18,227 +17,301 @@ import shutil
 import uuid
 from PIL import Image, ImageDraw, ImageFont
 
-# ============================
-# CONFIG
-# ============================
+# ======================
+# LO-FI CONFIG (CRITICAL)
+# ======================
 
-WIDTH = 720
-HEIGHT = 480
-FPS = 30
-DURATION = random.randint(60, 120)
-OUTPUT_FORMAT = "mov"
+WIDTH = 360      # was 720
+HEIGHT = 240     # was 480
+FPS = 12         # was 30
+DURATION = random.randint(35, 55)
 
-WORK = tempfile.mkdtemp(prefix="SEPHIROTH_V10_")
+CRF = "32"       # compression (lower = bigger, higher = smaller)
+PRESET = "veryfast"
+
+WORK = tempfile.mkdtemp(prefix="SEPHIROTH_LOFI_")
 FRAMES = os.path.join(WORK, "frames")
+
 os.makedirs(FRAMES, exist_ok=True)
 
-# ============================
-# AUTONOMOUS BRAIN
-# ============================
+# ======================
+# KEYWORD BRAIN
+# ======================
 
 def load_keywords():
     try:
         r = requests.get(
             "https://raw.githubusercontent.com/dwyl/english-words/master/words.txt",
             timeout=10)
-        words = r.text.splitlines()
-        return words[:20000]
+        return r.text.splitlines()[:15000]
     except:
-        return ["signal", "void", "entity", "collapse", "infection"]
+        return ["entity","signal","void","collapse"]
 
-KEYWORDS = load_keywords()
-KEYWORD = random.choice(KEYWORDS)
+KEYWORD = random.choice(load_keywords())
 print("KEYWORD:", KEYWORD)
 
-# ============================
+# ======================
 # TEXT SCRAPER
-# ============================
+# ======================
 
-def scrape_text(keyword):
-    texts = []
+def scrape():
+    t = []
+
     try:
         r = requests.get(
-            f"https://en.wikipedia.org/api/rest_v1/page/summary/{keyword}",
-            timeout=10)
+            f"https://en.wikipedia.org/api/rest_v1/page/summary/{KEYWORD}",
+            timeout=5)
+
         if r.status_code == 200:
-            texts.append(r.json().get("extract", ""))
+            t.append(r.json().get("extract",""))
     except:
         pass
 
-    texts += [
-        f"ENTITY DETECTED: {keyword.upper()}",
+    t += [
+        "EMERGENCY BROADCAST SYSTEM",
         "THIS IS NOT A TEST",
+        f"ENTITY CLASS: {KEYWORD.upper()}",
         "SIGNAL CONTAMINATION",
-        "DO NOT LOOK DIRECTLY",
-        "THE BROADCAST IS ALIVE",
-        "TRANSMISSION OVERRIDE"
+        "DO NOT RESPOND",
+        "OBSERVATION ACTIVE",
+        "THEY CAN SEE YOU"
     ]
 
-    return texts
+    return t
 
-TEXTS = scrape_text(KEYWORD)
+TEXTS = scrape()
 
-# ============================
-# IMAGE GENERATOR (NO 404s)
-# ============================
+# ======================
+# IMAGE GENERATOR
+# ======================
 
-def generate_image_variants(count=40):
-    paths = []
+def make_images(n=25):
 
-    for i in range(count):
-        img = Image.new("RGB", (WIDTH, HEIGHT), (
-            random.randint(0,30),
-            random.randint(0,30),
-            random.randint(0,30)
-        ))
+    paths=[]
+
+    for i in range(n):
+
+        img = Image.new("L",(WIDTH,HEIGHT),
+            random.randint(0,40))
 
         draw = ImageDraw.Draw(img)
 
-        # chaotic shapes
-        for _ in range(random.randint(20, 60)):
-            x1 = random.randint(0, WIDTH)
-            y1 = random.randint(0, HEIGHT)
-            x2 = random.randint(0, WIDTH)
-            y2 = random.randint(0, HEIGHT)
-            draw.line((x1,y1,x2,y2),
-                      fill=(random.randint(100,255),0,0),
-                      width=random.randint(1,3))
+        for _ in range(random.randint(10,30)):
+            draw.line(
+                (
+                    random.randint(0,WIDTH),
+                    random.randint(0,HEIGHT),
+                    random.randint(0,WIDTH),
+                    random.randint(0,HEIGHT)
+                ),
+                fill=random.randint(100,255),
+                width=1
+            )
 
-        path = os.path.join(WORK, f"img_{i}.png")
-        img.save(path)
-        paths.append(path)
+        p = os.path.join(WORK,f"img{i}.png")
+
+        img.save(p)
+
+        paths.append(p)
 
     return paths
 
-IMAGES = generate_image_variants()
+IMAGES = make_images()
 
-# ============================
-# ANALOG CORRUPTION
-# ============================
+# ======================
+# ANALOG DAMAGE
+# ======================
 
-def analog_corrupt(img):
-    arr = np.array(img)
-    noise = np.random.randint(0,50,arr.shape,dtype=np.uint8)
-    arr = np.clip(arr + noise,0,255)
+def corrupt(im):
 
-    # horizontal shift glitch
-    if random.random() < 0.3:
-        shift = random.randint(-50,50)
-        arr = np.roll(arr, shift, axis=1)
+    arr = np.array(im)
+
+    noise = np.random.randint(
+        0,40,arr.shape,dtype=np.uint8)
+
+    arr = np.clip(arr+noise,0,255)
+
+    if random.random()<0.25:
+
+        shift=random.randint(-20,20)
+
+        arr=np.roll(arr,shift,axis=1)
 
     return Image.fromarray(arr)
 
-# ============================
+# ======================
 # FRAME GENERATOR
-# ============================
+# ======================
 
 font = ImageFont.load_default()
 
-def make_frame(i):
-    base = Image.new("RGB",(WIDTH,HEIGHT),(0,0,0))
+def frame(i):
+
+    base = Image.new(
+        "L",
+        (WIDTH,HEIGHT),
+        random.randint(0,30)
+    )
+
     draw = ImageDraw.Draw(base)
 
-    # multiple layers
-    for _ in range(random.randint(1,4)):
-        img_path = random.choice(IMAGES)
-        im = Image.open(img_path)
-        im = im.resize((random.randint(200,WIDTH),
-                        random.randint(200,HEIGHT)))
-        base.paste(im,
-                   (random.randint(0, WIDTH-200),
-                    random.randint(0, HEIGHT-200)))
+    # image layers
+    for _ in range(random.randint(1,3)):
 
-    # text overlays
-    for _ in range(random.randint(1,6)):
-        text = random.choice(TEXTS)
+        im = Image.open(
+            random.choice(IMAGES))
+
+        base.paste(
+            im,
+            (
+                random.randint(0,WIDTH-50),
+                random.randint(0,HEIGHT-50)
+            )
+        )
+
+    # text layers
+    for _ in range(random.randint(1,4)):
+
         draw.text(
-            (random.randint(0, WIDTH-200),
-             random.randint(0, HEIGHT-20)),
-            text,
-            fill=(255, random.randint(0,50), random.randint(0,50)),
+
+            (
+                random.randint(0,WIDTH-100),
+                random.randint(0,HEIGHT-10)
+            ),
+
+            random.choice(TEXTS),
+
+            fill=random.randint(150,255),
+
             font=font
         )
 
-    # jumpscare flash
-    if random.random() < 0.015:
-        draw.rectangle((0,0,WIDTH,HEIGHT), fill=(255,255,255))
-        draw.text((WIDTH//2, HEIGHT//2),
-                  "LOOK AWAY",
-                  fill=(0,0,0),
-                  font=font)
+    # jumpscare
+    if random.random()<0.02:
 
-    base = analog_corrupt(base)
-    base.save(f"{FRAMES}/frame_{i:06d}.png")
+        draw.rectangle(
+            (0,0,WIDTH,HEIGHT),
+            fill=255
+        )
+
+        draw.text(
+            (WIDTH//3,HEIGHT//2),
+            "LOOK AWAY",
+            fill=0,
+            font=font
+        )
+
+    base = corrupt(base)
+
+    base.save(
+        f"{FRAMES}/frame_{i:05d}.png"
+    )
 
 print("Generating frames...")
-for i in range(DURATION * FPS):
-    make_frame(i)
 
-# ============================
-# AUDIO GENERATION
-# ============================
+for i in range(DURATION*FPS):
 
-def generate_tts(text):
-    wav_file = os.path.join(WORK, f"tts_{uuid.uuid4().hex}.wav")
+    frame(i)
+
+# ======================
+# AUDIO
+# ======================
+
+def tts():
+
+    f=os.path.join(
+        WORK,
+        f"tts_{uuid.uuid4().hex}.wav"
+    )
 
     subprocess.run([
+
         "espeak",
-        "-v", "en",
-        "-s", "120",
-        "-p", "40",
-        "-w", wav_file,
-        text
-    ], check=True)
 
-    return wav_file
+        "-v","en",
 
-tts_file = generate_tts(
-    f"WARNING. SIGNAL CONTAMINATION DETECTED. ENTITY NAME: {KEYWORD}"
-)
+        "-s","110",
 
-# background noise
-noise_file = os.path.join(WORK, "noise.wav")
+        "-p","40",
+
+        "-w",f,
+
+        f"WARNING. ENTITY {KEYWORD}. SIGNAL CONTAMINATED."
+
+    ])
+
+    return f
+
+tts_file=tts()
+
+noise=os.path.join(WORK,"noise.wav")
 
 subprocess.run([
-    "ffmpeg",
-    "-y",
+
+    "ffmpeg","-y",
+
     "-f","lavfi",
+
     "-i",f"anoisesrc=color=pink:duration={DURATION}",
-    noise_file
-], check=True)
 
-# mix audio
-final_audio = os.path.join(WORK, "final_audio.wav")
+    noise
+
+])
+
+audio=os.path.join(WORK,"audio.wav")
 
 subprocess.run([
-    "ffmpeg",
-    "-y",
-    "-i", noise_file,
-    "-i", tts_file,
+
+    "ffmpeg","-y",
+
+    "-i",noise,
+
+    "-i",tts_file,
+
     "-filter_complex","amix=inputs=2",
-    final_audio
-], check=True)
 
-# ============================
-# VIDEO EXPORT (GUARANTEED AUDIO)
-# ============================
+    audio
 
-OUTPUT = f"SEPHIROTH_V10_{KEYWORD}.{OUTPUT_FORMAT}"
+])
+
+# ======================
+# EXPORT (SMALL SIZE)
+# ======================
+
+OUTPUT=f"SEPHIROTH_V10_LOFI_{KEYWORD}.mov"
 
 subprocess.run([
-    "ffmpeg",
-    "-y",
-    "-framerate", str(FPS),
-    "-i", f"{FRAMES}/frame_%06d.png",
-    "-i", final_audio,
-    "-c:v","mpeg4",
-    "-q:v","3",
-    "-c:a","aac",
-    "-shortest",
-    OUTPUT
-], check=True)
 
-print("CREATED:", OUTPUT)
+    "ffmpeg",
+
+    "-y",
+
+    "-framerate",str(FPS),
+
+    "-i",f"{FRAMES}/frame_%05d.png",
+
+    "-i",audio,
+
+    "-c:v","libx264",
+
+    "-preset",PRESET,
+
+    "-crf",CRF,
+
+    "-pix_fmt","yuv420p",
+
+    "-c:a","aac",
+
+    "-b:a","64k",
+
+    "-shortest",
+
+    OUTPUT
+
+])
+
+print("CREATED:",OUTPUT)
 
 shutil.rmtree(WORK)
+
 
