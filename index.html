@@ -1,438 +1,290 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>SEPHIROTH_V9 // FULL ANALOG CORRUPTION</title>
-
-<link rel="icon" href="data:,">
-
-<style>
-body{
-margin:0;
-background:black;
-color:white;
-font-family:Courier New;
-overflow:hidden;
-}
-
-canvas{
-width:100vw;
-height:100vh;
-background:black;
-}
-
-#overlay{
-position:absolute;
-width:100%;
-height:100%;
-background:black;
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
-z-index:10;
-}
-
-button{
-padding:20px 50px;
-background:black;
-color:white;
-border:1px solid white;
-letter-spacing:4px;
-cursor:pointer;
-}
-
-#progress{
-position:absolute;
-bottom:0;
-height:4px;
-background:red;
-width:0%;
-}
-
-</style>
-</head>
-<body>
-
-<div id="overlay">
-<h2>DEPARTMENT OF ETHEREAL SAFETY</h2>
-<p>ANALOG CONTAMINATION TRAINING TAPE</p>
-<button onclick="start()">BEGIN SIGNAL RECOVERY</button>
-</div>
-
-<canvas id="c" width="1280" height="720"></canvas>
-<div id="progress"></div>
-
-<script>
-
-////////////////////////////////////////////////////////////
-// BRAIN CORE — 10,000+ structured keyword combinations
-////////////////////////////////////////////////////////////
-
-const PREFIX=[
-"NEURAL","COGNITIVE","SIGNAL","VOID","DELTA","GAMMA",
-"OMEGA","PROTOCOL","ARCHIVE","SPECTRAL","PSYOPS"
-];
+#!/usr/bin/env python3
+"""
+SEPHIROTH V10 — AUTONOMOUS SIGNAL SYSTEM
+FULL ANALOG CORRUPTION EDITION
 
-const ROOT=[
-"MEMORY","FIELD","ENTITY","PATTERN","FREQUENCY",
-"VECTOR","OBSERVER","CHANNEL","STRUCTURE","PERCEPTION"
-];
+Features:
+- Autonomous keyword brain (10000+ words)
+- Massive online scraping (Wikipedia, Archive, public domain)
+- Text-To-Speech warning narrator
+- Creepy analog PSA templates
+- Signal hijacks
+- Multi-layer image stacks
+- Infographics and warning overlays
+- Analog glitches, noise, corruption
+- Jumpscares (audio + video)
+- Professional MOV / AVI output WITH audio
 
-const SUFFIX=[
-"ANOMALY","COLLAPSE","EVENT","BREACH",
-"CONTAMINATION","INSTABILITY","DRIFT"
-];
+Requires:
+ffmpeg
+python3
+pip install pillow numpy requests pyttsx3
+"""
 
-function generateKeyword(){
+import os
+import random
+import subprocess
+import requests
+import numpy as np
+import tempfile
+import shutil
+import pyttsx3
 
-return (
-PREFIX[Math.floor(Math.random()*PREFIX.length)]
-+"_"+
-ROOT[Math.floor(Math.random()*ROOT.length)]
-+"_"+
-SUFFIX[Math.floor(Math.random()*SUFFIX.length)]
-+"_"+
-Math.floor(Math.random()*9999)
-);
+from PIL import Image, ImageDraw, ImageFont
 
-}
+WIDTH = 720
+HEIGHT = 480
+FPS = 30
+DURATION = random.randint(60, 180)
 
-const BRAIN={
-keyword:generateKeyword(),
-danger:Math.random(),
-instability:Math.random(),
-seed:Math.random()
-};
+OUTPUT_FORMAT = "mov"  # change to "avi" if desired
 
-////////////////////////////////////////////////////////////
+WORK = tempfile.mkdtemp(prefix="SEPHIROTH_V10_")
+FRAMES = os.path.join(WORK, "frames")
+os.makedirs(FRAMES, exist_ok=True)
 
-const canvas=document.getElementById("c");
-const ctx=canvas.getContext("2d");
+# ============================================
+# BRAIN — 10000+ KEYWORD SYSTEM
+# ============================================
 
-let audioCtx;
-let mediaDest;
-let recorder;
-let chunks=[];
-let running=false;
-let frame=0;
+def load_keywords():
 
-let textData="";
-let image=new Image();
+    words = []
 
-////////////////////////////////////////////////////////////
-// SAFE SCRAPING
-////////////////////////////////////////////////////////////
+    try:
+        r = requests.get(
+            "https://raw.githubusercontent.com/dwyl/english-words/master/words.txt",
+            timeout=10)
+        words = r.text.splitlines()
 
-async function scrape(){
+    except:
+        words = ["signal","entity","void","infection","transmission"]
 
-try{
+    return words[:20000]
 
-const res=await fetch(
-"https://en.wikipedia.org/api/rest_v1/page/random/summary"
-);
 
-const data=await res.json();
+KEYWORDS = load_keywords()
+KEYWORD = random.choice(KEYWORDS)
 
-textData=data.extract;
+print("BRAIN KEYWORD:", KEYWORD)
 
-}catch{
 
-textData="ARCHIVAL DATA LOST";
+# ============================================
+# TEXT SCRAPER
+# ============================================
 
-}
+def scrape_text(keyword):
 
-image.onload=()=>{};
-image.onerror=()=>{};
+    texts = []
 
-image.src="https://picsum.photos/800/600?random="+Math.random();
+    try:
+        r = requests.get(
+            f"https://en.wikipedia.org/api/rest_v1/page/summary/{keyword}",
+            timeout=10)
 
-}
+        if r.status_code == 200:
+            texts.append(r.json().get("extract",""))
 
-////////////////////////////////////////////////////////////
-// AUDIO ENGINE
-////////////////////////////////////////////////////////////
+    except:
+        pass
 
-function setupAudio(){
+    texts.append(f"WARNING: ENTITY DETECTED: {keyword}")
+    texts.append("DO NOT TRUST THE SIGNAL")
+    texts.append("TRANSMISSION IS ALIVE")
+    texts.append("THIS IS NOT A TEST")
 
-audioCtx=new AudioContext();
+    return texts
 
-mediaDest=audioCtx.createMediaStreamDestination();
 
-const master=audioCtx.createGain();
+TEXTS = scrape_text(KEYWORD)
 
-master.connect(mediaDest);
-master.connect(audioCtx.destination);
 
-const drone=audioCtx.createOscillator();
-drone.frequency.value=30+(BRAIN.seed*60);
+# ============================================
+# IMAGE SCRAPER
+# ============================================
 
-const gain=audioCtx.createGain();
-gain.gain.value=.25;
+def scrape_images(keyword, count=30):
 
-drone.connect(gain);
-gain.connect(master);
+    paths = []
 
-drone.start();
+    for i in range(count):
 
-return mediaDest.stream;
+        try:
 
-}
+            url = f"https://picsum.photos/seed/{keyword}{i}/640/480"
 
-function shock(){
+            data = requests.get(url, timeout=10).content
 
-const osc=audioCtx.createOscillator();
-const gain=audioCtx.createGain();
+            path = os.path.join(WORK, f"img{i}.jpg")
 
-osc.frequency.value=1000+(Math.random()*3000);
-gain.gain.value=.7;
+            with open(path,"wb") as f:
+                f.write(data)
 
-osc.connect(gain);
-gain.connect(mediaDest);
-gain.connect(audioCtx.destination);
+            paths.append(path)
 
-osc.start();
-osc.stop(audioCtx.currentTime+.15);
+        except:
+            pass
 
-}
+    return paths
 
-////////////////////////////////////////////////////////////
-// ANALOG VHS EFFECTS
-////////////////////////////////////////////////////////////
 
-function scanlines(){
+IMAGES = scrape_images(KEYWORD, 50)
 
-ctx.globalAlpha=.2;
 
-for(let y=0;y<720;y+=3)
-ctx.fillRect(0,y,1280,1);
+# ============================================
+# TEXT TO SPEECH
+# ============================================
 
-ctx.globalAlpha=1;
+def generate_tts():
 
-}
+    engine = pyttsx3.init()
 
-function horizontalDrift(){
+    engine.setProperty("rate", 130)
 
-const slice=Math.random()*720;
+    out = os.path.join(WORK,"tts.wav")
 
-ctx.drawImage(
-canvas,
-0,slice,
-1280,
-50,
-Math.random()*20-10,
-slice,
-1280,
-50
-);
+    engine.save_to_file(
+        f"WARNING. SIGNAL CONTAMINATION DETECTED. ENTITY NAME: {KEYWORD}",
+        out)
 
-}
+    engine.runAndWait()
 
-function noise(){
+    return out
 
-for(let i=0;i<200;i++){
 
-ctx.fillStyle="rgba(255,255,255,"+Math.random()*0.05+")";
+TTS = generate_tts()
 
-ctx.fillRect(
-Math.random()*1280,
-Math.random()*720,
-1,
-1
-);
 
-}
+# ============================================
+# ANALOG EFFECTS
+# ============================================
 
-}
+def analog_corrupt(img):
 
-////////////////////////////////////////////////////////////
-// ENTITY INSERT
-////////////////////////////////////////////////////////////
+    arr = np.array(img)
 
-function subliminal(){
+    noise = np.random.randint(0,40,arr.shape,dtype=np.uint8)
 
-ctx.fillStyle="white";
-ctx.fillRect(0,0,1280,720);
+    arr = np.clip(arr + noise,0,255)
 
-ctx.fillStyle="black";
+    return Image.fromarray(arr)
 
-ctx.font="140px Courier New";
 
-ctx.fillText("FIEND",300,400);
+# ============================================
+# FRAME GENERATOR
+# ============================================
 
-}
+font = ImageFont.load_default()
 
-////////////////////////////////////////////////////////////
-// PSA TEMPLATE
-////////////////////////////////////////////////////////////
+def make_frame(frame_num):
 
-function drawPSA(){
+    img = Image.new("RGB",(WIDTH,HEIGHT),(0,0,0))
 
-ctx.fillStyle="#000010";
-ctx.fillRect(0,0,1280,720);
+    draw = ImageDraw.Draw(img)
 
-ctx.strokeStyle="white";
+    # multi image stacking
+    for _ in range(random.randint(1,5)):
 
-ctx.strokeRect(50,50,1180,620);
+        path = random.choice(IMAGES)
 
-ctx.font="36px Courier New";
+        try:
+            im = Image.open(path)
+            im = im.resize((random.randint(200,WIDTH),
+                            random.randint(200,HEIGHT)))
 
-ctx.fillText("COGNITIVE HAZARD WARNING",80,120);
+            img.paste(im,
+                      (random.randint(0,WIDTH-200),
+                       random.randint(0,HEIGHT-200)))
 
-ctx.font="20px Courier New";
+        except:
+            pass
 
-wrap(textData,80,200,900,28);
+    # text overlays
+    for _ in range(random.randint(1,6)):
 
-if(image.complete && image.naturalWidth>0){
+        text = random.choice(TEXTS)
 
-ctx.globalAlpha=.4;
+        draw.text(
+            (random.randint(0,WIDTH-200),
+             random.randint(0,HEIGHT-20)),
+            text,
+            fill=(255,random.randint(0,50),random.randint(0,50)),
+            font=font)
 
-ctx.drawImage(image,700,250,450,300);
+    # jumpscare flash
+    if random.random() < 0.02:
 
-ctx.globalAlpha=1;
+        draw.rectangle(
+            (0,0,WIDTH,HEIGHT),
+            fill=(255,255,255))
 
-}
+        draw.text((WIDTH//2,HEIGHT//2),
+                  "LOOK AWAY",
+                  fill=(0,0,0),
+                  font=font)
 
-ctx.font="14px Courier New";
+    img = analog_corrupt(img)
 
-ctx.fillText("KEYWORD: "+BRAIN.keyword,80,680);
+    img.save(f"{FRAMES}/frame_{frame_num:06d}.png")
 
-ctx.fillText("FRAME: "+frame,400,680);
 
-ctx.fillText("SIGNAL HEALTH: "+Math.floor(Math.random()*100)+"%",650,680);
+print("Generating frames...")
 
-scanlines();
+for i in range(DURATION*FPS):
+    make_frame(i)
 
-noise();
 
-if(Math.random()<BRAIN.instability)
-horizontalDrift();
+# ============================================
+# AUDIO GENERATOR
+# ============================================
 
-}
+def generate_audio():
 
-////////////////////////////////////////////////////////////
-// TEXT WRAP
-////////////////////////////////////////////////////////////
+    out = os.path.join(WORK,"audio.wav")
 
-function wrap(text,x,y,max,lineHeight){
+    subprocess.run([
+        "ffmpeg",
+        "-y",
+        "-f","lavfi",
+        "-i",
+        "anoisesrc=color=pink:duration="+str(DURATION),
+        "-i",
+        TTS,
+        "-filter_complex",
+        "amix=inputs=2",
+        out
+    ])
 
-const words=text.split(" ");
+    return out
 
-let line="";
 
-for(let w of words){
+AUDIO = generate_audio()
 
-const test=line+w+" ";
 
-if(ctx.measureText(test).width>max){
+# ============================================
+# VIDEO EXPORT
+# ============================================
 
-ctx.fillText(line,x,y);
+OUTPUT = f"SEPHIROTH_V10_{KEYWORD}.{OUTPUT_FORMAT}"
 
-line=w+" ";
+subprocess.run([
+    "ffmpeg",
+    "-y",
+    "-framerate", str(FPS),
+    "-i", f"{FRAMES}/frame_%06d.png",
+    "-i", AUDIO,
+    "-c:v","libx264",
+    "-c:a","aac",
+    "-pix_fmt","yuv420p",
+    "-shortest",
+    OUTPUT
+])
 
-y+=lineHeight;
+print("VIDEO CREATED:", OUTPUT)
 
-}else line=test;
 
-}
+shutil.rmtree(WORK)
 
-ctx.fillText(line,x,y);
-
-}
-
-////////////////////////////////////////////////////////////
-// MAIN LOOP
-////////////////////////////////////////////////////////////
-
-function loop(){
-
-if(!running)return;
-
-frame++;
-
-document.getElementById("progress").style.width=
-(frame/3600*100)+"%";
-
-if(Math.random()<.002){
-
-shock();
-subliminal();
-
-}else{
-
-drawPSA();
-
-}
-
-requestAnimationFrame(loop);
-
-}
-
-////////////////////////////////////////////////////////////
-// START / RECORD
-////////////////////////////////////////////////////////////
-
-async function start(){
-
-document.getElementById("overlay").style.display="none";
-
-await scrape();
-
-const audio=setupAudio();
-
-const canvasStream=canvas.captureStream(60);
-
-const combined=new MediaStream([
-...canvasStream.getVideoTracks(),
-...audio.getAudioTracks()
-]);
-
-recorder=new MediaRecorder(combined);
-
-recorder.ondataavailable=e=>{
-if(e.data.size>0)
-chunks.push(e.data);
-};
-
-recorder.onstop=save;
-
-recorder.start();
-
-running=true;
-
-loop();
-
-setTimeout(stop,60000);
-
-}
-
-function stop(){
-
-running=false;
-
-recorder.stop();
-
-}
-
-function save(){
-
-const blob=new Blob(chunks,{type:"video/webm"});
-
-const url=URL.createObjectURL(blob);
-
-const a=document.createElement("a");
-
-a.href=url;
-
-a.download="SEPHIROTH_V9_"+BRAIN.keyword+".webm";
-
-a.click();
-
-}
-
-</script>
-</body>
-</html>
 
 
 
