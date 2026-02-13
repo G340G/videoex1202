@@ -2,60 +2,29 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>SEPHIROTH_V8 // COGNITIVE CONTAMINATION</title>
+<title>SEPHIROTH_V8.1 // STABLE BROADCAST</title>
+
+<link rel="icon" href="data:,">
 
 <style>
-
-body{
-margin:0;
-background:black;
-color:white;
-font-family:Courier New;
-overflow:hidden;
-}
-
-canvas{
-width:100vw;
-height:100vh;
-background:black;
-}
-
+body{margin:0;background:black;color:white;font-family:Courier New;overflow:hidden}
+canvas{width:100vw;height:100vh;background:black}
 #overlay{
-position:absolute;
-width:100%;
-height:100%;
-background:black;
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
-z-index:10;
-}
-
+position:absolute;width:100%;height:100%;
+background:black;display:flex;flex-direction:column;
+justify-content:center;align-items:center;z-index:10}
 button{
-padding:20px 50px;
-background:black;
-color:white;
-border:1px solid white;
-letter-spacing:4px;
-cursor:pointer;
-}
-
+padding:20px 50px;background:black;color:white;
+border:1px solid white;letter-spacing:4px;cursor:pointer}
 #progress{
-position:absolute;
-bottom:0;
-height:4px;
-background:red;
-width:0%;
-}
-
+position:absolute;bottom:0;height:4px;background:red;width:0%}
 </style>
 </head>
 <body>
 
 <div id="overlay">
 <h2>DEPARTMENT OF ETHEREAL SAFETY</h2>
-<p>COGNITIVE HAZARD TRAINING TAPE</p>
+<p>COGNITIVE HAZARD TAPE</p>
 <button onclick="start()">BEGIN RECOVERY</button>
 </div>
 
@@ -65,38 +34,31 @@ width:0%;
 <script>
 
 //////////////////////////////////////////////////////////
-// BRAIN SYSTEM — MASSIVE KEYWORD SPACE
+// MASSIVE BRAIN
 //////////////////////////////////////////////////////////
 
 function generateKeyword(){
-
-const syllables=[
-"ka","zu","mi","ra","ta","shi","no","ve","di","an",
-"tor","ul","mon","fer","zen","phi","crypt","void",
-"psy","neuro","xen","ether","som","noct","omn",
-"sig","mem","cog","echo","delta","omega","proto"
+const baseWords=[
+"memory","surveillance","dream","signal","void","neural",
+"hypnosis","perception","psyops","archive","cognition",
+"frequency","delta","gamma","shadow","protocol"
 ];
 
-let word="";
+let word=baseWords[Math.floor(Math.random()*baseWords.length)];
 
-const length=3+Math.floor(Math.random()*5);
-
-for(let i=0;i<length;i++)
-word+=syllables[Math.floor(Math.random()*syllables.length)];
+for(let i=0;i<3;i++){
+word+=Math.floor(Math.random()*9999);
+}
 
 return word;
-
 }
 
 const BRAIN={
-seed:Math.random(),
 keyword:generateKeyword(),
-mood:Math.random(),
-danger:Math.random()
+danger:Math.random(),
+mood:Math.random()
 };
 
-//////////////////////////////////////////////////////////
-// GLOBAL STATE
 //////////////////////////////////////////////////////////
 
 const canvas=document.getElementById("c");
@@ -112,63 +74,61 @@ let running=false;
 let scrapedTexts=[];
 let scrapedImages=[];
 
-let glitchState=0;
-
 //////////////////////////////////////////////////////////
-// SCRAPING SYSTEM
+// SAFE SCRAPING
 //////////////////////////////////////////////////////////
 
 async function scrapeText(){
 
-try{
+scrapedTexts=[];
 
+try{
 const res=await fetch(
 "https://en.wikipedia.org/api/rest_v1/page/summary/"+BRAIN.keyword
 );
 
+if(res.ok){
 const data=await res.json();
-
-if(data.extract)
-scrapedTexts.push(data.extract);
-
+if(data.extract) scrapedTexts.push(data.extract);
+}
 }catch{}
+
+if(scrapedTexts.length===0){
 
 try{
-
 const res=await fetch(
-"https://api.duckduckgo.com/?q="+BRAIN.keyword+"&format=json"
+"https://en.wikipedia.org/api/rest_v1/page/random/summary"
 );
-
 const data=await res.json();
-
-if(data.AbstractText)
-scrapedTexts.push(data.AbstractText);
-
+if(data.extract) scrapedTexts.push(data.extract);
 }catch{}
+}
 
 }
 
 function scrapeImage(){
 
+scrapedImages=[];
+
 const img=new Image();
 
-img.src=
-"https://source.unsplash.com/800x600/?"+
-BRAIN.keyword+
-"&sig="+Math.random();
+img.crossOrigin="anonymous";
 
-scrapedImages.push(img);
+img.onload=()=>scrapedImages.push(img);
+
+img.onerror=()=>console.log("Image failed safely");
+
+img.src="https://picsum.photos/800/600?random="+Math.random();
 
 }
 
 //////////////////////////////////////////////////////////
-// AUDIO SYSTEM
+// AUDIO (Guaranteed recording)
 //////////////////////////////////////////////////////////
 
 function setupAudio(){
 
 audioCtx=new AudioContext();
-
 mediaDest=audioCtx.createMediaStreamDestination();
 
 const master=audioCtx.createGain();
@@ -176,32 +136,14 @@ master.connect(mediaDest);
 master.connect(audioCtx.destination);
 
 const drone=audioCtx.createOscillator();
-drone.frequency.value=30+(BRAIN.mood*50);
+drone.frequency.value=40+(BRAIN.mood*40);
 
 const droneGain=audioCtx.createGain();
 droneGain.gain.value=0.2;
 
 drone.connect(droneGain);
 droneGain.connect(master);
-
 drone.start();
-
-const noiseBuffer=audioCtx.createBuffer(1,44100*2,44100);
-const data=noiseBuffer.getChannelData(0);
-
-for(let i=0;i<data.length;i++)
-data[i]=Math.random()*2-1;
-
-const noise=audioCtx.createBufferSource();
-noise.buffer=noiseBuffer;
-noise.loop=true;
-
-const noiseGain=audioCtx.createGain();
-noiseGain.gain.value=.03;
-
-noise.connect(noiseGain);
-noiseGain.connect(master);
-noise.start();
 
 return mediaDest.stream;
 
@@ -212,8 +154,7 @@ function glitchSound(){
 const osc=audioCtx.createOscillator();
 const gain=audioCtx.createGain();
 
-osc.frequency.value=200+(Math.random()*2000);
-
+osc.frequency.value=500+(Math.random()*2000);
 gain.gain.value=.8;
 
 osc.connect(gain);
@@ -226,52 +167,42 @@ osc.stop(audioCtx.currentTime+.2);
 }
 
 //////////////////////////////////////////////////////////
-// VISUAL SYSTEM
+// VISUALS
 //////////////////////////////////////////////////////////
 
 function drawPSA(){
 
-ctx.fillStyle="#000010";
+ctx.fillStyle="#000020";
 ctx.fillRect(0,0,1280,720);
 
 ctx.strokeStyle="white";
 ctx.strokeRect(50,50,1180,620);
 
 ctx.font="40px Courier New";
-
-ctx.fillText(
-"COGNITIVE HAZARD WARNING",
-80,
-120
-);
+ctx.fillText("EMERGENCY BROADCAST SYSTEM",80,120);
 
 ctx.font="20px Courier New";
 
 let y=200;
 
 for(let text of scrapedTexts){
-
 wrap(text,80,y,1000,28);
-
-y+=120;
-
+y+=150;
 }
 
 for(let img of scrapedImages){
 
-if(img.complete){
-
-ctx.globalAlpha=.3;
-
-ctx.drawImage(img,700,200,450,300);
-
+if(img.complete && img.naturalWidth>0){
+ctx.globalAlpha=.4;
+ctx.drawImage(img,700,250,450,300);
 ctx.globalAlpha=1;
-
 }
 
 }
 
 drawOverlay();
+
+drawScanlines();
 
 }
 
@@ -280,15 +211,16 @@ function drawOverlay(){
 ctx.font="14px Courier New";
 
 ctx.fillText("KEYWORD: "+BRAIN.keyword,80,680);
+ctx.fillText("FRAME: "+frame,300,680);
+ctx.fillText("INTEGRITY: "+Math.floor(Math.random()*100)+"%",500,680);
 
-ctx.fillText("TIME: "+frame,300,680);
+}
 
-ctx.fillText("SIGNAL INTEGRITY: "+
-Math.floor(Math.random()*100)+"%",500,680);
-
-ctx.fillText("COGNITIVE LOAD: "+
-Math.floor(BRAIN.danger*100)+"%",800,680);
-
+function drawScanlines(){
+ctx.globalAlpha=.2;
+for(let y=0;y<720;y+=4)
+ctx.fillRect(0,y,1280,2);
+ctx.globalAlpha=1;
 }
 
 function drawEntity(){
@@ -297,59 +229,27 @@ ctx.fillStyle="white";
 ctx.fillRect(0,0,1280,720);
 
 ctx.fillStyle="black";
-
 ctx.font="100px Courier New";
-
-ctx.fillText("THE FIEND",200,360);
-
-}
-
-function drawScanlines(){
-
-ctx.globalAlpha=.2;
-
-for(let y=0;y<720;y+=4){
-
-ctx.fillRect(0,y,1280,2);
+ctx.fillText("THE FIEND",250,360);
 
 }
 
-ctx.globalAlpha=1;
-
-}
-
-//////////////////////////////////////////////////////////
-// TEXT WRAP
 //////////////////////////////////////////////////////////
 
 function wrap(text,x,y,max,lineHeight){
-
 const words=text.split(" ");
-
 let line="";
-
 for(let w of words){
-
 const test=line+w+" ";
-
 if(ctx.measureText(test).width>max){
-
 ctx.fillText(line,x,y);
-
 line=w+" ";
-
 y+=lineHeight;
-
 }else line=test;
-
 }
-
 ctx.fillText(line,x,y);
-
 }
 
-//////////////////////////////////////////////////////////
-// LOOP
 //////////////////////////////////////////////////////////
 
 function loop(){
@@ -359,39 +259,21 @@ if(!running)return;
 frame++;
 
 document.getElementById("progress").style.width=
-(frame/3600*100)+"%";
+(frame/3000*100)+"%";
 
 if(Math.random()>.995){
-
-glitchState=1;
-
 glitchSound();
-
-}
-
-if(glitchState){
-
 drawEntity();
-
-if(Math.random()>.9)
-glitchState=0;
-
 }else{
-
 drawPSA();
-
-drawScanlines();
-
 }
 
-if(frame<3600)
+if(frame<3000)
 requestAnimationFrame(loop);
 else stop();
 
 }
 
-//////////////////////////////////////////////////////////
-// START
 //////////////////////////////////////////////////////////
 
 async function start(){
@@ -399,11 +281,9 @@ async function start(){
 document.getElementById("overlay").style.display="none";
 
 await scrapeText();
-
 scrapeImage();
 
 const audio=setupAudio();
-
 const canvasStream=canvas.captureStream(60);
 
 const combined=new MediaStream([
@@ -413,9 +293,10 @@ const combined=new MediaStream([
 
 recorder=new MediaRecorder(combined);
 
+chunks=[];
+
 recorder.ondataavailable=e=>{
-if(e.data.size>0)
-chunks.push(e.data);
+if(e.data.size>0)chunks.push(e.data);
 };
 
 recorder.onstop=save;
@@ -428,34 +309,19 @@ loop();
 
 }
 
-//////////////////////////////////////////////////////////
-// STOP
-//////////////////////////////////////////////////////////
-
 function stop(){
-
 running=false;
-
 recorder.stop();
-
 }
-
-//////////////////////////////////////////////////////////
-// SAVE
-//////////////////////////////////////////////////////////
 
 function save(){
 
-const blob=new Blob(chunks);
-
+const blob=new Blob(chunks,{type:"video/webm"});
 const url=URL.createObjectURL(blob);
 
 const a=document.createElement("a");
-
 a.href=url;
-
-a.download="SEPHIROTH_V8_"+BRAIN.keyword+".webm";
-
+a.download="SEPHIROTH_V8_STABLE_"+BRAIN.keyword+".webm";
 a.click();
 
 }
@@ -463,4 +329,5 @@ a.click();
 </script>
 </body>
 </html>
+
 
