@@ -2,58 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SEPHIROTH_V12 // DISSONANCE_PSA</title>
+    <title>SEPHIROTH_V13 // INFINITE_ENTROPY</title>
     <style>
-        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Helvetica', 'Arial', sans-serif; cursor: none; }
-        
-        #viewport { position: relative; width: 100vw; height: 100vh; background: #000; }
-        canvas { width: 100%; height: 100%; object-fit: contain; }
-
-        /* VHS OVERLAYS */
-        .scanlines {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
-            background-size: 100% 4px;
-        }
-        .tracking {
-            position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: rgba(255,255,255,0.1);
-            z-index: 11; animation: track 5s infinite linear; opacity: 0.5; pointer-events: none;
-        }
-
-        /* UI */
-        #ui-layer { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; 
-            background: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff;
-        }
-        h1 { letter-spacing: 5px; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; color: #f0f0f0; }
-        p { font-family: 'Courier New'; color: #888; font-size: 12px; }
-        
-        button { 
-            margin-top: 30px; padding: 20px 60px; border: 2px solid #fff; background: #000; color: #fff; 
-            font-weight: bold; letter-spacing: 2px; cursor: pointer; transition: 0.2s; text-transform: uppercase;
-        }
-        button:hover { background: #fff; color: #000; }
-        button:disabled { border-color: #333; color: #333; cursor: wait; }
-
-        #progress { position: absolute; bottom: 0; left: 0; height: 5px; background: #f00; width: 0%; z-index: 200; }
-
-        @keyframes track { 0% { top: -10%; opacity: 0; } 50% { opacity: 0.5; } 100% { top: 110%; opacity: 0; } }
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; cursor: none; }
+        canvas { width: 100vw; height: 100vh; object-fit: contain; }
+        #ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; background: #000; }
+        button { padding: 25px 50px; border: 1px solid #444; background: transparent; color: #666; letter-spacing: 5px; cursor: pointer; transition: 0.3s; }
+        button:hover { border-color: #f00; color: #fff; box-shadow: 0 0 20px #f00; }
+        #log { position: absolute; bottom: 10px; left: 10px; font-size: 10px; color: #333; pointer-events: none; }
+        #progress { position: absolute; bottom: 0; left: 0; height: 2px; background: #f00; width: 0%; transition: width 0.1s; }
     </style>
 </head>
 <body>
 
-<div id="ui-layer">
-    <h1 id="status">INITIALIZING SYSTEM...</h1>
-    <p id="sub-status">[ LOADING ASSETS ]</p>
-    <button id="start-btn" disabled>PLEASE WAIT</button>
+<div id="ui">
+    <h1 id="brain-tag">CONNECTING...</h1>
+    <button id="start-btn" style="display:none;">SYNCHRONIZE</button>
 </div>
 
-<div id="viewport">
-    <div class="scanlines"></div>
-    <div class="tracking"></div>
-    <div id="progress"></div>
-    <canvas id="c"></canvas>
-</div>
+<div id="log"></div>
+<div id="progress"></div>
+<canvas id="c"></canvas>
 
 <script>
 (function() {
@@ -61,337 +30,229 @@
 
     const canvas = document.getElementById("c");
     const ctx = canvas.getContext("2d", { alpha: false });
-    const uiTitle = document.getElementById("status");
-    const uiSub = document.getElementById("sub-status");
     const startBtn = document.getElementById("start-btn");
-    const progressBar = document.getElementById("progress");
+    const brainTag = document.getElementById("brain-tag");
+    const logDiv = document.getElementById("log");
 
     canvas.width = 1280;
     canvas.height = 720;
 
-    // --- 1. THE BRAIN (Dual Narrative) ---
-    const TRIVIAL_TOPICS = [
-        { title: "DENTAL HYGIENE", tips: ["Brush twice daily", "Floss between molars", "Rinse with fluoride", "Smile confidently"] },
-        { title: "LAWN MAINTENANCE", tips: ["Aerate the soil", "Fertilize in spring", "Remove weeds", "Water at dawn"] },
-        { title: "POSTURE CHECK", tips: ["Straighten your spine", "Relax your shoulders", "Feet flat on floor", "Align the neck"] }
-    ];
-
-    const HORROR_THEMES = [
-        { name: "THE_ROOTS", msg: "THE SOIL IS FULL OF TEETH", missing: "LAST SEEN: DIGGING", visual: "organic" },
-        { name: "THE_SIGNAL", msg: "DO NOT ANSWER THE PHONE", missing: "LAST SEEN: SCREAMING", visual: "static" },
-        { name: "THE_HIVE", msg: "SKIN IS A CONTAINER", missing: "LAST SEEN: MOLTING", visual: "flesh" }
-    ];
-
     let state = {
+        active: false,
         frame: 0,
-        maxFrames: 2100, // 35 seconds
-        trivial: null,
-        horror: null,
+        maxFrames: 2100, // ~35 sec
+        seed: Math.random().toString(16).slice(2),
+        anchor: "",
+        colors: { bg: "#000", primary: "#fff", accent: "#f00" },
+        text: "",
         images: [],
         recorder: null,
         chunks: [],
-        audioCtx: null,
-        audioDest: null,
-        masterGain: null,
-        running: false
+        audio: { ctx: null, dest: null, mode: null }
     };
 
-    // --- 2. ASSET LOADER (Fixing the Image Issue) ---
-    async function loadAssets() {
-        state.trivial = TRIVIAL_TOPICS[Math.floor(Math.random() * TRIVIAL_TOPICS.length)];
-        state.horror = HORROR_THEMES[Math.floor(Math.random() * HORROR_THEMES.length)];
-        
-        uiTitle.innerText = `PSA: ${state.trivial.title}`;
-        
-        const seeds = [100, 200, 300, 400].map(n => Math.floor(Math.random() * 1000));
-        const urls = [
-            `https://picsum.photos/seed/${seeds[0]}/1280/720?grayscale`, // Trivial BG
-            `https://picsum.photos/seed/${seeds[1]}/800/800?grayscale&blur=2`, // Missing Person
-            `https://picsum.photos/seed/${seeds[2]}/1280/720?grayscale&contrast=2` // Horror Texture
-        ];
+    const CONCEPTS = ["Paranoia", "Surveillance", "Entropy", "Decay", "Isolation", "Static", "Memory", "Labyrinth", "The_Void", "Apophenia"];
+    const JARGON = ["[ERR_PARITY_LOSS]", "[SIGNAL_BLEED]", "[0x88_NULL_PTR]", "[BUFFER_OVERFLOW]", "[CORRUPT_SECTOR]", "[SYNCH_ERR_V7]"];
 
-        let loaded = 0;
-        for (let url of urls) {
+    // --- 1. THE BRAIN: GENERATIVE SETUP ---
+    async function initBrain() {
+        state.anchor = CONCEPTS[Math.floor(Math.random() * CONCEPTS.length)];
+        brainTag.innerText = "KEYWORD: " + state.anchor;
+
+        // Randomize Colors
+        const hue = Math.random() * 360;
+        state.colors.bg = `hsl(${hue}, 100%, 2%)`;
+        state.colors.accent = `hsl(${(hue + 180) % 360}, 100%, 50%)`;
+        state.colors.primary = "#ffffff";
+
+        // Scrape Wiki
+        try {
+            const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${state.anchor}`);
+            const d = await r.json();
+            state.text = (d.extract || "CONNECTION_TIMEOUT").toUpperCase();
+        } catch { state.text = "ARCHIVAL CORRUPTION DETECTED."; }
+
+        // Load 3 Random Uncanny Images
+        for(let i=0; i<3; i++) {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = url;
-            img.onload = () => {
-                loaded++;
-                state.images.push(img);
-                if(loaded === urls.length) enableStart();
-            };
+            img.src = `https://picsum.photos/seed/${state.seed + i}/800/600?grayscale`;
+            state.images.push(img);
         }
+
+        setTimeout(() => { startBtn.style.display = "block"; }, 1000);
     }
 
-    function enableStart() {
-        uiTitle.innerText = "BROADCAST READY";
-        uiSub.innerText = `[ SCENARIO: ${state.trivial.title} // INTERFERENCE: ${state.horror.name} ]`;
-        startBtn.disabled = false;
-        startBtn.innerText = "INITIATE PSA";
-    }
-
-    // --- 3. AUDIO ENGINE (Corporate to Chaos) ---
-    function initAudio() {
+    // --- 2. AUDIO: MARKOV-CHAIN HORROR SYNTH ---
+    function setupAudio() {
         const AC = window.AudioContext || window.webkitAudioContext;
-        state.audioCtx = new AC();
-        state.audioDest = state.audioCtx.createMediaStreamDestination();
-        state.masterGain = state.audioCtx.createGain();
-        state.masterGain.gain.value = 0.5;
-        state.masterGain.connect(state.audioDest);
-        state.masterGain.connect(state.audioCtx.destination); // Monitor
+        state.audio.ctx = new AC();
+        state.audio.dest = state.audio.ctx.createMediaStreamDestination();
+        const master = state.audio.ctx.createGain();
+        master.connect(state.audio.dest);
+        master.connect(state.audio.ctx.destination);
 
-        // 1. Corporate Jingle (Arpeggiator)
-        const arp = state.audioCtx.createOscillator();
-        const arpGain = state.audioCtx.createGain();
-        arp.type = 'sine';
-        arp.connect(arpGain).connect(state.masterGain);
-        arp.start();
-        
-        // Music Logic Loop
-        let noteIdx = 0;
-        const majorScale = [261.63, 329.63, 392.00, 523.25]; // C Major
-        const dissonantScale = [240, 245, 255, 100]; // Unsettling
-        
-        setInterval(() => {
-            if(!state.running) { arpGain.gain.value = 0; return; }
-            
-            // Morph from happy to scary based on timeline
-            const progress = state.frame / state.maxFrames;
-            const isScary = progress > 0.3 || (state.frame % 400 > 300);
-            
-            const scale = isScary ? dissonantScale : majorScale;
-            const freq = scale[noteIdx % scale.length];
-            
-            // Detune heavily if scary
-            const detune = isScary ? (Math.random()*50 - 25) : 0;
-            
-            arp.frequency.setValueAtTime(freq + detune, state.audioCtx.currentTime);
-            arpGain.gain.setValueAtTime(isScary ? 0.3 : 0.1, state.audioCtx.currentTime);
-            arpGain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 0.5);
-            
-            noteIdx++;
-        }, 250);
-
-        // 2. The Drone (40Hz Fear Freq)
-        const drone = state.audioCtx.createOscillator();
-        const dGain = state.audioCtx.createGain();
-        drone.frequency.value = 40;
-        dGain.gain.value = 0.2;
-        drone.connect(dGain).connect(state.masterGain);
+        // Sub-Bass Drone
+        const drone = state.audio.ctx.createOscillator();
+        drone.type = "sine";
+        drone.frequency.value = 40 + (Math.random() * 10);
+        const dg = state.audio.ctx.createGain();
+        dg.gain.value = 0.2;
+        drone.connect(dg).connect(master);
         drone.start();
+
+        // Melodic Disruption
+        const scales = [ [110, 116, 123, 138], [82, 87, 103, 110], [55, 65, 73, 82] ];
+        const myScale = scales[Math.floor(Math.random()*scales.length)];
+
+        setInterval(() => {
+            if(!state.active) return;
+            const osc = state.audio.ctx.createOscillator();
+            const g = state.audio.ctx.createGain();
+            osc.type = Math.random() > 0.5 ? "sawtooth" : "square";
+            osc.frequency.setValueAtTime(myScale[Math.floor(Math.random()*myScale.length)], state.audio.ctx.currentTime);
+            g.gain.setValueAtTime(0.05, state.audio.ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, state.audio.ctx.currentTime + 1);
+            osc.connect(g).connect(master);
+            osc.start(); osc.stop(state.audio.ctx.currentTime + 1.1);
+        }, 400 + (Math.random()*1000));
     }
 
-    function playJumpscare() {
-        const osc = state.audioCtx.createOscillator();
-        const g = state.audioCtx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(100, state.audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(3000, state.audioCtx.currentTime + 0.1);
-        g.gain.setValueAtTime(0.8, state.audioCtx.currentTime);
-        g.gain.linearRampToValueAtTime(0, state.audioCtx.currentTime + 0.3);
-        osc.connect(g).connect(state.masterGain);
-        osc.start(); osc.stop(state.audioCtx.currentTime + 0.4);
-    }
-
-    // --- 4. VISUAL ENGINE (The PSA) ---
-    
-    // Recursive Tree (The Brand Logo)
-    function drawTree(x, y, len, angle, depth, color) {
+    // --- 3. VISUALS: PROCEDURAL FIEND & PSA ---
+    function drawTree(x, y, len, angle, depth) {
         if(depth === 0) return;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle * Math.PI/180);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = depth;
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, -len); ctx.stroke();
-        drawTree(0, -len, len*0.7, angle - 25, depth-1, color);
-        drawTree(0, -len, len*0.7, angle + 25, depth-1, color);
+        ctx.beginPath(); ctx.save();
+        ctx.strokeStyle = state.colors.accent;
+        ctx.lineWidth = depth * 0.5;
+        ctx.translate(x, y); ctx.rotate(angle * Math.PI / 180);
+        ctx.moveTo(0,0); ctx.lineTo(0, -len); ctx.stroke();
+        const sway = Math.sin(state.frame * 0.05) * 2;
+        drawTree(0, -len, len * 0.75, angle - 20 + sway, depth - 1);
+        drawTree(0, -len, len * 0.75, angle + 20 + sway, depth - 1);
         ctx.restore();
     }
 
-    // Procedural Face (The Missing Person / Fiend)
-    function drawFace(x, y, type) {
+    function drawFiend() {
         ctx.save();
-        ctx.translate(x, y);
-        
-        // Base Head
-        ctx.fillStyle = type === 'normal' ? "#ccc" : "#111";
-        ctx.beginPath(); ctx.arc(0, 0, 100, 0, Math.PI*2); ctx.fill();
-        
-        // Features
-        ctx.fillStyle = type === 'normal' ? "#000" : "#fff";
-        
-        if (type === 'normal') {
-            // Generic Face
-            ctx.fillRect(-40, -20, 20, 10); // L Eye
-            ctx.fillRect(20, -20, 20, 10);  // R Eye
-            ctx.fillRect(-30, 40, 60, 5);   // Mouth
-        } else {
-            // The Fiend
-            const shake = Math.random()*10;
-            ctx.fillRect(-50+shake, -30, 100, 20); // Hollow eyes
-            // Vertical Mouth
-            ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 80); ctx.strokeStyle="#fff"; ctx.lineWidth=5; ctx.stroke();
-            
-            // Tree Etched on Face
-            drawTree(0, -60, 20, 0, 3, "#f00");
+        ctx.translate(640, 360);
+        const shake = Math.random() > 0.97 ? 20 : 0;
+        ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+
+        // Body
+        ctx.fillStyle = "#0a0a0a"; ctx.strokeStyle = "#333";
+        ctx.beginPath();
+        const pts = 5 + (parseInt(state.seed[0], 16) % 5); // Procedural vertex count
+        for(let i=0; i<pts; i++) {
+            const ang = (i / pts) * Math.PI * 2;
+            const r = 200 + (Math.sin(i * 2) * 50);
+            ctx.lineTo(Math.cos(ang)*r, Math.sin(ang)*r);
+        }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        // Eye Logic
+        const eyeCount = 1 + (parseInt(state.seed[1], 16) % 6);
+        ctx.fillStyle = "#fff"; ctx.shadowBlur = 20; ctx.shadowColor = "#fff";
+        for(let i=0; i<eyeCount; i++) {
+            const flicker = Math.random() > 0.1 ? 1 : 0;
+            ctx.globalAlpha = flicker;
+            ctx.fillRect(-100 + (i*40), -50, 20, 5);
         }
         ctx.restore();
     }
 
     function render() {
-        if (!state.running) return;
+        if(!state.active) return;
         state.frame++;
-        
-        const progress = state.frame / state.maxFrames;
-        progressBar.style.width = `${progress * 100}%`;
+        document.getElementById("progress").style.width = (state.frame/state.maxFrames*100) + "%";
 
-        // SCENE CONTROLLER
-        const cycle = state.frame % 600; // 10 second loops
-        let mode = 'TRIVIAL';
-        if (cycle > 300) mode = 'MISSING';
-        if (cycle > 550 || Math.random() > 0.98) mode = 'GLITCH';
-        if (progress > 0.8) mode = 'ENDGAME';
+        // Console Logging Simulation
+        if(state.frame % 30 === 0) {
+            logDiv.innerHTML += `> ${JARGON[Math.floor(Math.random()*JARGON.length)]} @ 0x${state.frame.toString(16)}<br>`;
+            if(logDiv.innerHTML.length > 500) logDiv.innerHTML = "";
+        }
 
-        // 1. BACKGROUND
-        ctx.fillStyle = (mode === 'TRIVIAL') ? "#000080" : "#000"; // Corporate Blue vs Black
+        ctx.fillStyle = state.colors.bg;
         ctx.fillRect(0,0,1280,720);
 
-        if (mode === 'TRIVIAL') {
-            // --- CORPORATE SLIDE ---
-            if(state.images[0]) {
-                ctx.globalAlpha = 0.2;
-                ctx.drawImage(state.images[0], 0, 0, 1280, 720);
+        if(state.frame % 600 < 450) {
+            // PSA MODE
+            ctx.strokeStyle = "#222"; ctx.strokeRect(40,40,1200,640);
+            ctx.fillStyle = state.colors.primary;
+            ctx.font = "bold 50px Courier New";
+            ctx.fillText("PSA: " + state.anchor, 80, 110);
+            
+            ctx.font = "16px Courier New";
+            const lines = state.text.match(/.{1,80}(\s|$)/g) || [];
+            lines.slice(0, 15).forEach((l, i) => {
+                const glitchText = Math.random() > 0.98 ? "███████████" : l;
+                ctx.fillText(glitchText, 80, 180 + (i*25));
+            });
+
+            // Images
+            const curImg = state.images[Math.floor(state.frame/700) % 3];
+            if(curImg.complete) {
+                ctx.globalAlpha = 0.1;
+                const zoom = 1 + Math.sin(state.frame*0.01)*0.2;
+                ctx.drawImage(curImg, 640 - (400*zoom), 360 - (300*zoom), 800*zoom, 600*zoom);
                 ctx.globalAlpha = 1.0;
             }
-            
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 60px Helvetica";
-            ctx.textAlign = "center";
-            ctx.fillText(state.trivial.title, 640, 100);
-            
-            ctx.font = "30px Helvetica";
-            ctx.textAlign = "left";
-            state.trivial.tips.forEach((tip, i) => {
-                ctx.fillText(`• ${tip}`, 200, 250 + (i*60));
-            });
-            
-            // Logo
-            drawTree(1100, 650, 40, 0, 5, "#fff");
-            
-        } else if (mode === 'MISSING') {
-            // --- MISSING PERSON POSTER ---
-            ctx.fillStyle = "#f00"; // Alert Red Background
-            ctx.fillRect(50, 50, 1180, 620);
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(60, 60, 1160, 600); // White Paper
-
-            ctx.fillStyle = "#000";
-            ctx.font = "bold 100px Helvetica";
-            ctx.textAlign = "center";
-            ctx.fillText("MISSING", 640, 180);
-
-            // The Photo
-            if(state.images[1]) {
-                ctx.drawImage(state.images[1], 440, 220, 400, 400);
-            } else {
-                drawFace(640, 420, 'normal');
-            }
-
-            ctx.font = "bold 40px Courier New";
-            ctx.fillText(state.horror.missing, 640, 600);
-
-        } else if (mode === 'GLITCH' || mode === 'ENDGAME') {
-            // --- THE BREAKDOWN ---
-            if(state.frame % 5 === 0) {
-                 ctx.fillStyle = Math.random() > 0.5 ? "#fff" : "#000";
-                 ctx.fillRect(0,0,1280,720);
-            }
-            
-            // Datamoshing effect (draw previous frame with offset)
-            ctx.drawImage(canvas, Math.random()*20-10, Math.random()*20-10);
-            
-            // The Fiend
-            drawFace(640, 360, 'fiend');
-            
-            ctx.fillStyle = "#fff";
-            ctx.font = "100px Courier New";
-            ctx.textAlign = "center";
-            ctx.fillText(state.horror.msg, 640, 360);
-            
-            if(mode === 'GLITCH' && Math.random() > 0.8) playJumpscare();
-        }
-
-        // 2. GLOBAL CHAOS LAYER
-        // RGB Split
-        if (Math.random() > 0.95) {
-            const split = 10;
-            ctx.globalCompositeOperation = 'screen';
-            ctx.drawImage(canvas, split, 0);
-            ctx.globalCompositeOperation = 'source-over';
-        }
-
-        if (state.frame < state.maxFrames) {
-            requestAnimationFrame(render);
         } else {
-            stop();
+            // ENTITY MODE
+            drawFiend();
+            if(Math.random() > 0.95) {
+                ctx.fillStyle = "#fff"; ctx.fillRect(0,0,1280,720);
+            }
         }
+
+        // Tree Movement
+        drawTree(1150, 650, 40, 0, 6);
+
+        // Global Distortion
+        if(Math.random() > 0.98) {
+            const y = Math.random()*720;
+            ctx.drawImage(canvas, 0, y, 1280, 20, Math.random()*40-20, y, 1280, 20);
+        }
+
+        if(state.frame < state.maxFrames) requestAnimationFrame(render);
+        else finish();
     }
 
-    // --- 5. CONTROL ---
+    // --- 4. ENGINE CONTROLS ---
     async function start() {
-        document.getElementById("ui-layer").style.display = "none";
-        initAudio();
+        document.getElementById("ui").style.display = "none";
+        setupAudio();
         
         const stream = canvas.captureStream(60);
-        const combined = new MediaStream([
-            ...stream.getVideoTracks(),
-            ...state.audioDest.stream.getAudioTracks()
-        ]);
+        const combined = new MediaStream([...stream.getVideoTracks(), ...state.audio.dest.stream.getAudioTracks()]);
 
-        state.recorder = new MediaRecorder(combined, { 
-            mimeType: 'video/webm;codecs=vp9,opus',
-            videoBitsPerSecond: 5000000 
-        });
-        
+        state.recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp9,opus' });
         state.recorder.ondataavailable = e => state.chunks.push(e.data);
         state.recorder.onstop = save;
-        state.recorder.start(1000); 
-        state.running = true;
-
-        // Voiceover
-        const utter = new SpeechSynthesisUtterance("Attention. The following is a public service announcement regarding... " + state.trivial.title);
-        utter.lang = 'en-US'; utter.rate = 0.9;
-        window.speechSynthesis.speak(utter);
-
+        
+        state.recorder.start(100); 
+        state.active = true;
         render();
+
+        const msg = new SpeechSynthesisUtterance("Warning. Public Service Announcement regarding " + state.anchor + ". Parity check failed. Proceed with caution.");
+        msg.lang = 'en-US'; msg.pitch = 0.1; msg.rate = 0.8;
+        window.speechSynthesis.speak(msg);
     }
 
-    function stop() {
-        state.running = false;
+    function finish() {
+        state.active = false;
         state.recorder.stop();
-        // Scary ending voice
-        const utter = new SpeechSynthesisUtterance("They are in the " + state.horror.visual);
-        utter.lang = 'en-US'; utter.pitch = 0.1; utter.rate = 0.5;
-        window.speechSynthesis.speak(utter);
     }
 
     function save() {
         const blob = new Blob(state.chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
-        a.download = `PSA_${state.trivial.title.replace(/\s/g,'_')}.webm`;
+        a.href = URL.createObjectURL(blob);
+        a.download = `SEPHIROTH_INF_${state.anchor}_${state.seed}.webm`;
         a.click();
-        
-        uiTitle.innerText = "BROADCAST ENDED";
-        uiSub.innerText = "CHECK DOWNLOADS FOLDER";
-        document.getElementById("ui-layer").style.display = "flex";
-        startBtn.style.display = "none";
+        setTimeout(() => window.location.reload(), 2000);
     }
 
-    // Boot
-    loadAssets();
+    initBrain();
     startBtn.addEventListener("click", start);
 
 })();
